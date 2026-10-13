@@ -1,4 +1,4 @@
-# Atari 2600 no SD2SNES (FPGA MK2)
+# STorm2600: Atari 2600 no SD2SNES (FPGA MK2)
 
 Roda jogos de Atari 2600 no próprio Super Nintendo, usando o FPGA Spartan‑3 do
 SD2SNES/FXPak (revisão MK2). O Atari é emulado em hardware dentro do FPGA do
@@ -58,3 +58,7 @@ docs/    design, layout do buffer e pendências
 
 Baixe `fpga_atari.bit` e `atari_snes7.bin` da página de Releases e copie para
 o cartão. ROMs de Atari não são distribuídas com este projeto.
+
+## Licença
+
+GPL-2.0, a mesma do sd2snes. Veja [LICENSE](LICENSE).
