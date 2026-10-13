@@ -1,0 +1,46 @@
+# ROMs de Atari: nunca versionar
+*.a26
+*.A26
+roms/
+
+# Saídas do Xilinx ISE (bitstreams vão nas Releases)
+*.bit
+*.bgn
+*.ncd
+*.ngd
+*.ngc
+*.pcf
+*.map
+*.mrp
+*.par
+*.twr
+*.twx
+*.xrpt
+*.drc
+*.bld
+*.pad
+*.unroutes
+*.lso
+*.syr
+*.ngr
+*_summary.html
+*_usage.xml
+xst/
+_xmsgs/
+iseconfig/
+xlnx_auto_0_xdb/
+planAhead_*/
+build/
+
+# Saídas do assembler (binário do player vai nas Releases)
+*.sfc
+*.smc
+snes/*.bin
+*.sym
+
+# Backups locais
+bak_*/
+bkp_*/
+
+# Saídas de medição
+tools/out/
