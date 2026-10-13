@@ -72,3 +72,10 @@ Width 1:1 (step 22)
   out/tiles/report_v10.txt  the step-21b result.  out/largura_160_vs_512.py ran with the tool in
   bak_v10/ (it needs the stretched layout).
   bak_v10/                  the tool as it was for the stretched (step 21b) layout
+
+Diagnostic 3 and step 24
+  sim/tb_d3.v               per-pixel object masks, log of TIA writes / reads / collisions, RAM per
+                            frame; +joy0/+joy1/+joyv hold a joystick value between two frames
+  sim/tb_cpu.v              opcode trace of the CPU (illegal opcodes, banks used)
+  The Python drivers of these two benches live in out/diag3 and out/passo24 of the working
+  tree and are not in the repository.
