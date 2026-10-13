@@ -1,0 +1,157 @@
+Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 23 em 2026-10-12)
+
+NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
+no repositorio; o fpga_atari.bit e o atari_snes7.bin atuais estao na pagina de Releases.
+
+No cartao, segundo o usuario (2026-10-12): o bit do passo 23 (este fpga_atari.bit) e o player v7.
+
+Arquivo          Tamanho   MD5                               Destino no cartao
+---------------  --------  --------------------------------  --------------------------
+fpga_atari.bit    120604   5ba5631572bb6352c2239557e13ff12d  /sd2snes/fpga_atari.bit
+atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7; gravar COM ESTE NOME no cartao)
+atari_snes.bin     32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o player v3, so' serve ate' o bit v7)
+firmware.img      113079   8b1ee64bd9cbc2c24517d902b3fdf788  /sd2snes/firmware.img
+fpga_atari_v1.bit  99085   323a40a82b5e415c2ca2a893492a6bea  (nao vai para o cartao: versao anterior)
+fpga_atari_v2.bit  98870   ed3bc075db1e18c6e85c5e529cf3f31b  (nao vai para o cartao: versao anterior)
+fpga_atari_v3.bit 106050   a249a86b9087a4e75adbd2742205e84e  (nao vai para o cartao: versao anterior)
+fpga_atari_v4.bit 109525   64b1767d1486531a8c272ff3e158b9d1  (nao vai para o cartao: versao anterior)
+fpga_atari_v5.bit 104485   b2a82649352119271386be816aa32ad9  (nao vai para o cartao: versao anterior)
+fpga_atari_v6.bit 108271   a58b4a75b82d9a416d101271a7497e4f  (nao vai para o cartao: versao anterior)
+fpga_atari_v7.bit 107699   8eecad45af1fa604825249f0aef2a5df  (nao vai para o cartao: versao anterior)
+fpga_atari_v8.bit 109180   70baccbff93c288c132ed8a4ffa8c38b  (nao vai para o cartao: versao anterior)
+LAYOUT_BUFFER.txt                                             (nao vai para o cartao: layout para o player)
+fpga_atari_v9.bit 111777   7c1355e765f1c64ad7071e5f59645a12  (nao vai para o cartao: versao anterior)
+LAYOUT_BUFFER_v8.txt                                          (nao vai para o cartao: layout do fpga_atari_v8.bit)
+LAYOUT_BUFFER_v9.txt                                          (nao vai para o cartao: layout do fpga_atari_v9.bit)
+atari_snes_v1.bin  32768   37438c294d76ec3659d3db155f60bbd7  (nao vai para o cartao: versao anterior)
+atari_snes_v2.bin  32768   f2ccb7532945d0316cb26144646fbb7a  (nao vai para o cartao: versao anterior)
+atari_snes3.bin    32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o mesmo atari_snes.bin)
+firmware_v1.img   113075   b9240302cfd98d45a68cb1ce9c6be129  (nao vai para o cartao: versao anterior)
+firmware_v2.img   113079   0d0fdbe951e6b7d194e117bcb10f095f  (nao vai para o cartao: versao anterior)
+atari_snes_v3j.bin 32768   7633b618085430191eb26ba68f1903e8  (player 3j; ainda NAO e' o atari_snes.bin)
+atari_snes_v3h.bin 32768   ddda5baf48b5586a34d023e10dfead27  (copia do atari_snes.bin de 2026-10-11 06:58;
+                                                              o conteudo e' o v3, nao o 3h)
+
+Origem
+- fpga_atari.bit : VM (storm-ise147), ~/pristine/verilog/sd2snes_atari/fpga_atari.bit.
+                   E' o main.bit (md5 22effaaeb650d582bc3c7275268e3ba7) comprimido com
+                   utils/rle. Build de 2026-10-12 com semente de placement 10, -bp desligado,
+                   o clock de 96 MHz fecha por +0,034 ns, 0 erros, 4982 LUTs, 2889 slices,
+                   2205 FFs, 16 de 16 BRAMs.  Em uso no cartao segundo o usuario (ver o topo).
+                   (sementes 6, 7, 8 e 9 nao fecharam: -1,294, -1,208, -0,368, -0,586 ns)
+                   PASSO 23, COR TROCADA NO MEIO DA LINHA: as 4 cores da linha continuam
+                   amostradas no pixel 16; do pixel 17 em diante, o pixel cuja fonte teve a
+                   cor trocada depois da amostra recebe o menor indice cuja cor amostrada e'
+                   igual 'a cor final dele (se nenhuma for igual, fica como antes).
+                   Corrige o bloco a mais 'a direita da faixa do logo no Enduro e no
+                   Frostbite (colunas 124..139) e o digito direito do placar do Boxing.
+                   Medido em 1.020 quadros de seis jogos: pixels com cor errada 9520 / 2307 /
+                   9520 (Enduro / Boxing / Frostbite) -> 0, nenhum pixel certo ficou errado.
+                   O inicio do arco-iris na coluna 20 NAO foi mexido (igual no ALE).
+                   Versao em $2027 (leitura) = $05.
+                   O formato do buffer e' o mesmo do passo 21b (ver LAYOUT_BUFFER.txt):
+                   o player v7 (atari_snes7.bin, md5 c89e847b9fab2aa53aade96387d4fbe2) serve.
+                   O bit do passo 22 (md5 c4e5d085512ad4f7a4b35b9ee6310823, main.bit
+                   6b1d83b88c55f9f91c06d90532eef87d, semente 6, +0,031 ns, 4982 LUTs, 2885
+                   slices, versao $04) esta' em ~/projetos/atari_core/bak_v11/fpga_atari_v11.bit.
+                   PASSO 22, LARGURA 1:1: 1 pixel do Atari = 1 coluna do SNES (fim do
+                   esticamento 5 -> 8).  Imagem nas colunas 48..207 (tiles 6..25 do mapa;
+                   os tiles 0..5 e 26..31 = 0); janela por linha: esquerda 48 (56 com a
+                   barra do HMOVE), direita 207.
+                   O bit do passo 21b (esticado; md5 806c5e44ad4e94c38af70efb55654ed1,
+                   main.bit 2d517fd1c777dd8468fc945097fa35bc, semente 6, +0,010 ns, 4969
+                   LUTs) esta' em ~/projetos/atari_core/bak_v10/fpga_atari_v10.bit.
+                   DESDE O PASSO 21b:
+                     - DICIONARIO DE TILES: cada buffer traz cabecalho (+$0000, palavra 0 =
+                       numero de tiles distintos), mapa de 28 x 32 entradas (+$0010) e a
+                       lista dos tiles distintos (+$0800, 16 bytes cada, ate' 512)
+                     - tabelas de cor (+$4000..) e de janela (+$5000), tres buffers, trava
+                       ($2027), enquadramento (YS0 = 34, $2026) e R0/R1/R2: como no v9
+                     - $202D = quadros descartados; $202E/$202F = tiles do ultimo quadro
+                     - versao em $2027 (leitura) = $03 no bit do 21b
+                   VERSAO v9 (fpga_atari_v9.bit; semente 7, +0,026 ns, main.bit md5
+                   68e8fe252630d39c9f3985c47233cf49), a ultima com os 896 tiles diretos:
+                     - imagem esticada 5 -> 8: 32 tiles por linha (256 pixels)
+                     - TRES buffers de 32 KB: $70:8000, $71:8000, $72:8000
+                     - R0 ($2020) = so' o numero do buffer pronto (bits 1:0); os bits de
+                       miss / FIFO / ROM carregada foram para $202B
+                     - $2027 (escrita) = trava do buffer que o SNES esta' lendo
+                     - janela fixa de 224 linhas a partir da linha YS0 = 34 depois do
+                       VSYNC (como o Stella); $2026 = deslocamento com sinal, -16..+47
+                       (antes: linhas descartadas no topo)
+                     - tabelas de cor em +$4000/+$4400/+$4800/+$4C00, janela em +$5000
+                       (esquerda 0 ou 13, direita 255)
+                     - versao em $2027 (leitura) = $02
+                     - timer do RIOT corrigido: os jogos passam a gerar 262 linhas por
+                       quadro (antes 264)
+                   VERSAO v8 (fpga_atari_v8.bit): tabelas de HDMA em BGR555 em
+                   +$2400..+$3000, janela em +$3400, 20 tiles por linha, 2 buffers;
+                   semente 7, +0,067 ns, main.bit md5 c8eb1755d36699ae172de8c2e2a58e75.
+                   VERSAO ANTERIOR (v7):
+                   NOVO NESTA VERSAO: jogadores de tamanho duplo e quadruplo (NUSIZ 5
+                   e 7) comecam 1 pixel mais tarde, como no TIA real (ponte do River Raid).
+                   DESDE A VERSAO ANTERIOR:
+                     $2023 bit 4 = pausa (1 congela CPU, TIA, RIOT e audio, sem reset;
+                                   bit 0 = run, bits 3:1 = mapper continuam iguais)
+                     $2026 bits 5:0 = linhas descartadas no topo de cada quadro (0..63,
+                                   vale a partir do quadro seguinte; volta a 0 no reset)
+                     $202A = leitura do valor do skip
+                     as 4 cores de cada linha sao amostradas no pixel 16 (antes: pixel 0)
+                   FLAG DE HMOVE: na paleta por linha (4 bytes em +0x2300), o bit 7 do
+                   byte COLUBK = 1 quando os 8 primeiros pixels da linha foram apagados.
+                   POSICAO DOS OBJETOS corrigida no TIA: RESPx/RESMx/RESBL contam a
+                   partir do clock em que o strobe vale (jogador +5, missil/bola +4);
+                   antes os sprites saiam 3 pixels a esquerda do playfield.
+                   ROM EM BLOCK RAM: depois de cada reset do SNES o core copia 16 KB
+                   de 0x300000 (PSRAM) para um BRAM e so entao comeca a rodar.
+                     R0 ($2020) bit 4 = ROM carregada (bit 6 = miss, bit 5 = FIFO de video)
+                     R8 ($2028) = ciclos de CPU com miss (deve ficar 00)
+                     R9 ($2029) = latencia maxima das leituras do carregador, em clocks
+                                  de 96 MHz: e' a latencia real do slot da PSRAM
+                     escrita no registrador 5 ($2025) zera miss/contador/latencia
+                   Mappers 2K, 4K, F8 e F6. F4 (32 KB) NAO funciona: so 16 KB cabem.
+- fpga_atari_v7.bit : o anterior, ultimo com o formato antigo de paleta (4 bytes por linha
+                   em +$2300, flag de HMOVE no bit 7 do byte COLUBK); semente 8, +0,028 ns,
+                   main.bit md5 98f98c2c522d901a4123d5b1a627b0cf.
+- fpga_atari_v6.bit : com pausa, skip e cores no pixel 16, mas com os
+                   jogadores duplos/quadruplos 1 pixel a esquerda (semente 8, +0,032 ns,
+                   main.bit md5 11918caa93eb08c46505826b94b7a008).
+- fpga_atari_v5.bit : com flag de HMOVE mas sem pausa, sem skip e com as
+                   cores amostradas no pixel 0 (semente 10, +0,004 ns,
+                   main.bit md5 69396956ebd30cab5df45b37136cabb1).
+- fpga_atari_v4.bit : sem o flag de HMOVE (semente 10, +0,032 ns,
+                   main.bit md5 bbc623a8cdd3a226115bd391d1eafa3e).
+- fpga_atari_v3.bit : ROM em block RAM mas sprites 3 pixels a esquerda
+                   (semente 1, +0,016 ns, main.bit md5 f87d47b2593b52c06db9734a6b35e9fb).
+- fpga_atari_v2.bit : ROM lida ao vivo da PSRAM e o diagnostico
+                   (semente 1, +0,096 ns, main.bit md5 cd01878f166b1ba36be301b55b4d8223).
+                   No hardware mostrava misses continuos (causa nao medida).
+- fpga_atari_v1.bit : o bitstream anterior, sem o diagnostico (semente 2, +0,018 ns,
+                   main.bit md5 c273e19b1ab329e879e64aeea0e0e10d). Guardado como reserva.
+- atari_snes7.bin : o player atual (v7; md5 c89e847b9fab2aa53aade96387d4fbe2), para o layout com dicionario e largura
+                   1:1 (bits dos passos 22 e 23).  No cartao ele se chama /sd2snes/atari_snes.bin, que e' o nome
+                   que o firmware abre.  Nao foi montado nem conferido aqui contra um fonte.
+- atari_snes.bin : NAO SERVE para o fpga_atari.bit atual (so' ate' o v7). Player v3 (copia do atari_snes3.bin recebido pronto; titulo
+                   "ATARI2600 VIDEO PLYR", LoROM, 32768 bytes). Nao foi montado nem
+                   conferido aqui contra um fonte. Precisa do firmware.img desta pasta:
+                   le os frame buffers do core em $70:8000 (PSRAM 0x380000).
+- atari_snes_v2.bin : player v2 de teste (atari_snes2.s), 5 linhas de diagnostico em
+                   hexadecimal, sem video do Atari.
+- atari_snes_v1.bin : o player anterior (atari_snes.s), que so mostra as linhas 1 a 3.
+- firmware.img   : ~/projetos/atari_fw/src/obj-mk2/ (copia do firmware com o patch
+                   do Mk.II; base 1b5d9d79, CONFIG=config-mk2, arm-none-eabi-gcc 13.2.1).
+                   Para um .a26 a mascara de ROM passa a ser de 4 MB: $70:8000-$FFFF
+                   enxerga PSRAM 0x380000-0x387FFF; o player segue em $00:8000 e os
+                   bancos $01-$3F deixam de espelha-lo.
+                   Liga tambem FEAT_CMD_UNLOCK para um .a26: o player pode escrever
+                   $81 em $2A00 (voltar ao menu) ou $80 (reiniciar o jogo).
+- firmware_v2.img : o anterior, com a mascara de 4 MB mas sem FEAT_CMD_UNLOCK.
+- firmware_v1.img : sem a mascara de 4 MB.
+
+Atencao
+- O firmware.img SUBSTITUI o firmware do cartao (o atual tem 113049 bytes). Guarde
+  uma copia do firmware.img atual antes de trocar.
+- O md5 do firmware.img muda a cada compilacao, mesmo com o mesmo fonte; o valor
+  acima vale so para este arquivo.
+- Limitacoes conhecidas: ROMs com RAM Superchip nao sao recusadas (o core nao a
+  implementa); o Mk.III nao foi compilado com o patch.
