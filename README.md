@@ -94,6 +94,17 @@ estão em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
 O bitstream e o player de cada versão também ficam na página de Releases (lá o
 player se chama `atari_snes7.bin`; no cartão, `atari_snes.bin`). ROMs de Atari não são distribuídas com este projeto.
 
+## Autoria
+
+Copyright (C) 2026 AndinhoNFS.
+
+O projeto foi concebido, dirigido e testado no console por AndinhoNFS. Grande
+parte do código (o Verilog de `fpga/`, as ferramentas de `tools/` e as mudanças
+de `firmware/`) foi escrita com assistência do Claude, da Anthropic, a partir
+das especificações e dos resultados de teste dele; os commits feitos assim
+levam a linha `Co-Authored-By: Claude`. As partes derivadas do sd2snes mantêm
+os autores e a licença originais.
+
 ## Licença
 
 GPL-2.0, a mesma do sd2snes. Veja [LICENSE](LICENSE).
