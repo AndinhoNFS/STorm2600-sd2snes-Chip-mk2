@@ -44,3 +44,18 @@ bkp_*/
 
 # Saídas de medição
 tools/out/
+
+# Binários e saídas de simulação
+*.bin
+*.img
+*.o
+*.lst
+*.vvp
+*.vcd
+*.whl
+__pycache__/
+*.pyc
+tools/pylib/
+tools/build/
+# Teste funcional do 6502 (Klaus Dormann): baixar à parte, ver fpga/LEIAME.md
+fpga/func_test.hex

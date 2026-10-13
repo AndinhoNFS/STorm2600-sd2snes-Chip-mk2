@@ -48,16 +48,35 @@ Detalhes em [docs/DESIGN.md](docs/DESIGN.md).
 ## Estrutura
 
 ```
-fpga/    fontes do core (Verilog/VHDL) e projeto ISE
-snes/    player SNES (65816)
-tools/   scripts de comparação e medição
-docs/    design, layout do buffer e pendências
+fpga/    fontes do core (Verilog), testbenches e script que gera o projeto ISE
+snes/    player SNES (65816); o fonte do v7 ainda não foi importado
+tools/   scripts de comparação e medição contra o emulador (ALE)
+docs/    design, layout do buffer, pendências e notas de trabalho
 ```
+
+Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
+
+## Origem do código
+
+- Todo o Verilog em `fpga/` foi escrito do zero para este projeto
+  (GPL-2.0-or-later). Nenhum arquivo do sd2snes ou do MiSTer é copiado aqui.
+- O projeto ISE é gerado por `fpga/make_atari_shell.py` a partir de uma árvore
+  intacta do [sd2snes](https://github.com/ludufre/sd2snes) (GPL-2.0): o `main.v`,
+  o `.ucf` e o `.xise` gerados derivam dos originais e não são versionados.
+- O [Atari2600_MiSTer](https://github.com/MiSTer-devel/Atari2600_MiSTer) é só
+  referência de comportamento (por exemplo, a numeração dos mappers).
+- As ferramentas em `tools/` usam o [ALE](https://github.com/Farama-Foundation/Arcade-Learning-Environment)
+  (núcleo do Stella) como referência; ele é instalado à parte com `pip`.
+- `fpga/tb_m6507_func.v` roda o teste funcional do 6502 de
+  [Klaus Dormann](https://github.com/Klaus2m5/6502_65C02_functional_tests)
+  (GPL-3.0), que não é distribuído aqui.
+- O firmware do cartão com o modo Atari (cópia modificada do sd2snes) ainda
+  não está neste repositório.
 
 ## Instalação no cartão
 
 Baixe `fpga_atari.bit` e `atari_snes7.bin` da página de Releases e copie para
-o cartão. ROMs de Atari não são distribuídas com este projeto.
+a pasta `/sd2snes/` do cartão, o segundo com o nome `atari_snes.bin`. ROMs de Atari não são distribuídas com este projeto.
 
 ## Licença
 
