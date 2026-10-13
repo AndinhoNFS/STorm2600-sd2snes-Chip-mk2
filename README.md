@@ -54,6 +54,7 @@ Detalhes em [docs/DESIGN.md](docs/DESIGN.md).
 fpga/    fontes do core (Verilog), testbenches e script que gera o projeto ISE
 snes/    player SNES (65816); o fonte do v7 ainda não foi importado
 tools/   scripts de comparação e medição contra o emulador (ALE)
+sdcard/  arquivos prontos para o cartão (bitstream, player e firmware)
 docs/    design, layout do buffer, pendências e notas de trabalho
 ```
 
@@ -73,13 +74,19 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - `fpga/tb_m6507_func.v` roda o teste funcional do 6502 de
   [Klaus Dormann](https://github.com/Klaus2m5/6502_65C02_functional_tests)
   (GPL-3.0), que não é distribuído aqui.
-- O firmware do cartão com o modo Atari (cópia modificada do sd2snes) ainda
-  não está neste repositório.
+- O `sdcard/sd2snes/firmware.img` é o firmware do sd2snes (GPL-2.0) compilado
+  com o modo Atari. O fonte modificado ainda não está neste repositório.
 
 ## Instalação no cartão
 
-Baixe `fpga_atari.bit` e `atari_snes7.bin` da página de Releases e copie para
-a pasta `/sd2snes/` do cartão, o segundo com o nome `atari_snes.bin`. ROMs de Atari não são distribuídas com este projeto.
+Copie o conteúdo de [`sdcard/`](sdcard/) para a raiz do cartão, mesclando com a
+pasta `/sd2snes/` que já existe. São três arquivos: `fpga_atari.bit`,
+`atari_snes.bin` (o player v7) e `firmware.img`. O `firmware.img` substitui o
+firmware do cartão: guarde uma cópia do atual antes. O passo a passo e os md5
+estão em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
+
+O bitstream e o player de cada versão também ficam na página de Releases (lá o
+player se chama `atari_snes7.bin`; no cartão, `atari_snes.bin`). ROMs de Atari não são distribuídas com este projeto.
 
 ## Licença
 

@@ -90,6 +90,13 @@ varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0,010 ns.
 O caminho crítico é o mesmo nos dois: da cor do pixel no TIA até o dado de
 escrita do gravador de vídeo (9 níveis de lógica). A margem está diminuindo.
 
+## Binários
+
+Os três arquivos que vão para o cartão ficam versionados em `sdcard/`, na
+mesma estrutura do cartão, e o bitstream e o player também nas Releases.
+Sempre que um deles mudar, `sdcard/` é atualizado no mesmo commit que muda os
+fontes.
+
 ## Temporização
 
 Core: 262 linhas/quadro (59,92 Hz) contra 60,10 Hz do SNES: um quadro repetido

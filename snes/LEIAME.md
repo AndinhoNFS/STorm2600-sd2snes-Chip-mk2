@@ -7,7 +7,8 @@ das versões 1 e 2 (`atari_snes.s`, `atari_snes2.s`, montados com ca65/ld65,
 `lorom.cfg` e `fix_snes_checksum.py`), que não servem para o bitstream atual e
 não foram importados.
 
-O binário `atari_snes7.bin` (md5 `c89e847b9fab2aa53aade96387d4fbe2`) está na
-página de Releases. No cartão ele é gravado como `/sd2snes/atari_snes.bin`.
+O binário (md5 `c89e847b9fab2aa53aade96387d4fbe2`) está em
+`sdcard/sd2snes/atari_snes.bin`, com o nome que o firmware abre, e na página de
+Releases como `atari_snes7.bin`.
 
 O que o player precisa fazer está em `docs/DESIGN.md` e `docs/LAYOUT_BUFFER.txt`.

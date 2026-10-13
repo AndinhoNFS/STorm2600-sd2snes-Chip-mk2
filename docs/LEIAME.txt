@@ -1,7 +1,8 @@
 Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13)
 
 NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
-no repositorio; o fpga_atari.bit e o atari_snes7.bin atuais estao na pagina de Releases.
+no repositorio, menos os tres que vao para o cartao: eles estao em sdcard/sd2snes/ (ver sdcard/LEIAME.md)
+e o fpga_atari.bit e o atari_snes7.bin tambem na pagina de Releases.
 
 No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (este fpga_atari.bit)
 ainda NAO foi gravado nem testado em hardware.

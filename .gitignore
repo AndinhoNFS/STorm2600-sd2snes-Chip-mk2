@@ -3,7 +3,7 @@
 *.A26
 roms/
 
-# Saídas do Xilinx ISE (bitstreams vão nas Releases)
+# Saídas do Xilinx ISE (o bitstream atual fica em sdcard/ e nas Releases)
 *.bit
 *.bgn
 *.ncd
@@ -32,7 +32,7 @@ xlnx_auto_0_xdb/
 planAhead_*/
 build/
 
-# Saídas do assembler (binário do player vai nas Releases)
+# Saídas do assembler (o player atual fica em sdcard/ e nas Releases)
 *.sfc
 *.smc
 snes/*.bin
@@ -59,3 +59,8 @@ tools/pylib/
 tools/build/
 # Teste funcional do 6502 (Klaus Dormann): baixar à parte, ver fpga/LEIAME.md
 fpga/func_test.hex
+
+# Arquivos do cartão: versionados (única exceção às regras de binários acima).
+# Manter no fim do arquivo.
+!sdcard/
+!sdcard/**
