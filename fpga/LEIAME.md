@@ -17,7 +17,8 @@ SPDX de cada arquivo). Não há código copiado do sd2snes nem do MiSTer aqui.
 ## Projeto ISE
 
 Não há `.ucf`, `.xise` nem `.prj` nesta pasta: eles são **gerados** a partir de
-uma árvore intacta do [sd2snes](https://github.com/ludufre/sd2snes).
+uma árvore intacta do [sd2snes](https://github.com/ludufre/sd2snes) (os
+bitstreams distribuídos usam o commit `1b5d9d79`).
 `make_atari_shell.py REPO_ROOT --src fpga/` cria `verilog/sd2snes_atari/` ao
 lado de `verilog/sd2snes_base/`, com uma cópia de `main.v` em que duas
 instâncias são trocadas, stubs dos módulos não usados, o `Makefile`, o

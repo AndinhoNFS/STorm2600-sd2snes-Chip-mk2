@@ -33,8 +33,8 @@ Os mesmos md5 estão em `MD5SUMS`.
   o do Passo 23, na Release `v0.7-p23`.
 - O `firmware.img` é só para o Mk.II; o Mk.III não foi compilado com o modo
   Atari. Ele é uma cópia modificada do firmware do
-  [sd2snes](https://github.com/ludufre/sd2snes) (GPL-2.0), e o fonte modificado
-  ainda não está neste repositório.
+  [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e
+  como recompilar estão em `firmware/`.
 - Este firmware escolhe o mapper F8 para todo arquivo de 8 KB, então o
   Decathlon (mapper FE) continua com tela preta. Ver `docs/PENDENCIAS.md`.
 - ROMs com RAM Superchip não são recusadas, mas o core não a implementa.

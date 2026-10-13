@@ -29,8 +29,8 @@ foi testado em hardware.
 - Deslocamento salvo por ROM.
 - Folga de timing: 0,024 ns no Passo 24, depois de 12 sementes. O caminho do
   TIA até o gravador de vídeo está no limite.
-- Importar o fonte do player v7 para `snes/` e o fonte do firmware com o modo
-  Atari (os binários dos dois já estão em `sdcard/`).
+- Importar o fonte do player v7 para `snes/` (o binário já está em `sdcard/`).
+  Enquanto ele faltar, o repositório distribui um binário sem o fonte.
 
 ## Corrigidos no Passo 24
 
