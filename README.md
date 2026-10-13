@@ -52,7 +52,7 @@ Detalhes em [docs/DESIGN.md](docs/DESIGN.md).
 
 ```
 fpga/    fontes do core (Verilog), testbenches e script que gera o projeto ISE
-snes/    player SNES (65816); o fonte do v7 ainda não foi importado
+snes/    player SNES v7 (65816, ca65) e os testes dele
 tools/   scripts de comparação e medição contra o emulador (ALE)
 firmware/ mudanças no firmware do sd2snes para o modo Atari (patch)
 sdcard/  arquivos prontos para o cartão (bitstream, player e firmware)
@@ -80,8 +80,8 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
   patch e os quatro arquivos modificados, com os cabeçalhos originais.
 - O `sdcard/sd2snes/fpga_atari.bit` contém, além do core deste repositório, o
   restante do FPGA do sd2snes (`verilog/sd2snes_base` do mesmo commit).
-- O fonte do player (`sdcard/sd2snes/atari_snes.bin`) ainda não está aqui; ver
-  `snes/LEIAME.md`.
+- O player (`sdcard/sd2snes/atari_snes.bin`) é montado a partir de `snes/`,
+  escrito do zero; o binário reproduz byte a byte (ver `snes/LEIAME.md`).
 
 ## Instalação no cartão
 
@@ -99,8 +99,8 @@ player se chama `atari_snes7.bin`; no cartão, `atari_snes.bin`). ROMs de Atari 
 Copyright (C) 2026 AndinhoNFS.
 
 O projeto foi concebido, dirigido e testado no console por AndinhoNFS. Grande
-parte do código (o Verilog de `fpga/`, as ferramentas de `tools/` e as mudanças
-de `firmware/`) foi escrita com assistência do Claude, da Anthropic, a partir
+parte do código (o Verilog de `fpga/`, o player de `snes/`, as ferramentas de
+`tools/` e as mudanças de `firmware/`) foi escrita com assistência do Claude, da Anthropic, a partir
 das especificações e dos resultados de teste dele; os commits feitos assim
 levam a linha `Co-Authored-By: Claude`. As partes derivadas do sd2snes mantêm
 os autores e a licença originais.

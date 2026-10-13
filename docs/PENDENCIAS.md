@@ -4,9 +4,9 @@
 
 - **Decathlon (e outros FE da Activision)**: tela preta no console. O core
   já tem o mapper FE (valor 5), mas o firmware escolhe F8 para todo arquivo
-  de 8 KB. Falta o firmware detectar FE e passar 5. Pela descrição do player
-  (`docs/player_descricao_completa.md`), o v7 repassa valores até 7 ao
-  registrador 3; isso não foi conferido contra o fonte.
+  de 8 KB. Falta o firmware detectar FE e passar 5. O player v7 já repassa o
+  valor: lê `$FFF0`, faz `mapper*2 | 1` e escreve no registrador 3 (conferido
+  no fonte, `snes/atari_snes7.s`).
 - **Decathlon**: a bola sai 1 pixel à esquerda do emulador numa linha em que o
   jogo faz RESBL logo depois de HMOVE (8 pixels por quadro, só em simulação).
 - **Leituras do TIA**: os bits 5..0 voltam 0 em vez do último valor do
@@ -30,8 +30,6 @@ foi testado em hardware.
 - Deslocamento salvo por ROM.
 - Folga de timing: 0,024 ns no Passo 24, depois de 12 sementes. O caminho do
   TIA até o gravador de vídeo está no limite.
-- Importar o fonte do player v7 para `snes/` (o binário já está em `sdcard/`).
-  Enquanto ele faltar, o repositório distribui um binário sem o fonte.
 
 ## Corrigidos no Passo 24
 

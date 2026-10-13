@@ -1,0 +1,14 @@
+Fontes do player SNES v7 (atari_snes7.s)  md5 do binario no cartao: c89e847b9fab2aa53aade96387d4fbe2
+
+Montar (cc65: ca65 + ld65), nesta pasta:
+  ca65 -l atari_snes7.lst -o atari_snes7.o atari_snes7.s
+  ld65 -C lorom.cfg -o atari_snes7.bin atari_snes7.o
+  python3 fix_snes_checksum.py atari_snes7.bin
+  md5sum atari_snes7.bin     (deve dar c89e847b9fab2aa53aade96387d4fbe2)
+
+Teste no emulador 65816 (Python):
+  cp atari_snes7.lst atari_snes3.lst     (o harness le os simbolos deste nome)
+  python3 test7.py                       (deve terminar com "ALL OK")
+test7.py usa test3g.py (parte inicial), emu65816.py e palette_ntsc.inc.
+Arquivos: atari_snes7.s fonte, swcha_lut.inc tabela do joystick, lorom.cfg mapa LoROM 32 KB,
+fix_snes_checksum.py corrige checksum, emu65816.py emulador, test3g.py/test7.py testes.
