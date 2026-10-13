@@ -1,13 +1,14 @@
-Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 23 em 2026-10-12)
+Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13)
 
 NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
 no repositorio; o fpga_atari.bit e o atari_snes7.bin atuais estao na pagina de Releases.
 
-No cartao, segundo o usuario (2026-10-12): o bit do passo 23 (este fpga_atari.bit) e o player v7.
+No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (este fpga_atari.bit)
+ainda NAO foi gravado nem testado em hardware.
 
 Arquivo          Tamanho   MD5                               Destino no cartao
 ---------------  --------  --------------------------------  --------------------------
-fpga_atari.bit    120604   5ba5631572bb6352c2239557e13ff12d  /sd2snes/fpga_atari.bit
+fpga_atari.bit    121293   473215f082acd657de7f586d61e5d214  /sd2snes/fpga_atari.bit
 atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7; gravar COM ESTE NOME no cartao)
 atari_snes.bin     32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o player v3, so' serve ate' o bit v7)
 firmware.img      113079   8b1ee64bd9cbc2c24517d902b3fdf788  /sd2snes/firmware.img
@@ -34,11 +35,24 @@ atari_snes_v3h.bin 32768   ddda5baf48b5586a34d023e10dfead27  (copia do atari_sne
 
 Origem
 - fpga_atari.bit : VM (storm-ise147), ~/pristine/verilog/sd2snes_atari/fpga_atari.bit.
-                   E' o main.bit (md5 22effaaeb650d582bc3c7275268e3ba7) comprimido com
-                   utils/rle. Build de 2026-10-12 com semente de placement 10, -bp desligado,
-                   o clock de 96 MHz fecha por +0,034 ns, 0 erros, 4982 LUTs, 2889 slices,
-                   2205 FFs, 16 de 16 BRAMs.  Em uso no cartao segundo o usuario (ver o topo).
-                   (sementes 6, 7, 8 e 9 nao fecharam: -1,294, -1,208, -0,368, -0,586 ns)
+                   E' o main.bit (md5 8c96f945c0c50d2401c6d67940c35ab8) comprimido com
+                   utils/rle. Build de 2026-10-13 com semente de placement 17, -bp desligado,
+                   o clock de 96 MHz fecha por +0,024 ns, 0 erros, 5003 LUTs, 2875 slices,
+                   2260 FFs, 16 de 16 BRAMs.  Nao foi testado em hardware.
+                   (11 sementes nao fecharam: 10, 6..9, 11..16; a melhor delas -0,016 ns)
+                   PASSO 24, so' no core (Diagnostico 3):
+                     - PLAYFIELD: uma escrita em PF0/PF1/PF2 so' vale no inicio da proxima celula
+                       de 4 pixels.  Corrige o par de pixels fora do lugar do H.E.R.O. (o heroi
+                       morria ao encostar) e a lacuna na barra de oxigenio do Seaquest.
+                     - GRP0/GRP1 valem 1 pixel depois (1 pixel de cor no H.E.R.O.).
+                     - MAPPER FE (Activision, 8 KB) = 5 em $2023 bits 3:1.  O Decathlon original
+                       SO' roda quando o firmware escolher 5; o firmware.img desta pasta ainda
+                       escolhe F8 para todo arquivo de 8 KB (tela preta, como antes).
+                     - versao em $2027 (leitura) = $06.  Buffer, tabelas e registradores iguais:
+                       o player v7 serve sem mudanca.
+                   O bit do passo 23 (md5 5ba5631572bb6352c2239557e13ff12d, main.bit
+                   22effaaeb650d582bc3c7275268e3ba7, semente 10, +0,034 ns, 4982 LUTs, 2889
+                   slices, versao $05) esta' em ~/projetos/atari_core/bak_v12/fpga_atari_v12.bit.
                    PASSO 23, COR TROCADA NO MEIO DA LINHA: as 4 cores da linha continuam
                    amostradas no pixel 16; do pixel 17 em diante, o pixel cuja fonte teve a
                    cor trocada depois da amostra recebe o menor indice cuja cor amostrada e'
@@ -48,7 +62,7 @@ Origem
                    Medido em 1.020 quadros de seis jogos: pixels com cor errada 9520 / 2307 /
                    9520 (Enduro / Boxing / Frostbite) -> 0, nenhum pixel certo ficou errado.
                    O inicio do arco-iris na coluna 20 NAO foi mexido (igual no ALE).
-                   Versao em $2027 (leitura) = $05.
+                   Versao em $2027 (leitura) = $05 naquele bit.
                    O formato do buffer e' o mesmo do passo 21b (ver LAYOUT_BUFFER.txt):
                    o player v7 (atari_snes7.bin, md5 c89e847b9fab2aa53aade96387d4fbe2) serve.
                    O bit do passo 22 (md5 c4e5d085512ad4f7a4b35b9ee6310823, main.bit
@@ -129,7 +143,7 @@ Origem
 - fpga_atari_v1.bit : o bitstream anterior, sem o diagnostico (semente 2, +0,018 ns,
                    main.bit md5 c273e19b1ab329e879e64aeea0e0e10d). Guardado como reserva.
 - atari_snes7.bin : o player atual (v7; md5 c89e847b9fab2aa53aade96387d4fbe2), para o layout com dicionario e largura
-                   1:1 (bits dos passos 22 e 23).  No cartao ele se chama /sd2snes/atari_snes.bin, que e' o nome
+                   1:1 (bits dos passos 22, 23 e 24).  No cartao ele se chama /sd2snes/atari_snes.bin, que e' o nome
                    que o firmware abre.  Nao foi montado nem conferido aqui contra um fonte.
 - atari_snes.bin : NAO SERVE para o fpga_atari.bit atual (so' ate' o v7). Player v3 (copia do atari_snes3.bin recebido pronto; titulo
                    "ATARI2600 VIDEO PLYR", LoROM, 32768 bytes). Nao foi montado nem

@@ -1,6 +1,7 @@
-Atari 2600 no sd2snes Mk.II -- layout do frame buffer (fpga_atari.bit md5 5ba5631572bb6352c2239557e13ff12d, passo 23: cor trocada no meio da linha)
-(O formato do buffer e' o do passo 21b e a largura 1:1 e' a do passo 22; no passo 23 so' mudou o indice de
- alguns pixels dos tiles, ver CORES.  Bit do passo 22, md5 c4e5d085512ad4f7a4b35b9ee6310823: atari_core/bak_v11.
+Atari 2600 no sd2snes Mk.II -- layout do frame buffer (fpga_atari.bit md5 473215f082acd657de7f586d61e5d214, passo 24)
+(O formato do buffer e' o do passo 21b, a largura 1:1 a do passo 22 e a regra de CORES a do passo 23.  O passo 24 nao
+ muda nada neste layout: so' o TIA (atraso das escritas de PF e GRP), o mapper FE = 5 em $2023 e a versao $06.
+ Bit do passo 23, md5 5ba5631572bb6352c2239557e13ff12d: atari_core/bak_v12.  Passo 22, c4e5d085...: atari_core/bak_v11.
  Bit e layout do passo 21b: atari_core/bak_v10.  Layouts anteriores: LAYOUT_BUFFER_v9.txt para o fpga_atari_v9.bit, 896 tiles diretos; LAYOUT_BUFFER_v8.txt para o v8)
 
 TRES buffers de 32 KB na PSRAM:
@@ -85,13 +86,14 @@ TRES BUFFERS E TRAVA
 REGISTRADORES ($2020-$202F)
   escrita: $2020 SWCHA   $2021 SWCHB   $2022 botoes de tiro (bits 0,1)   $2024 INPT0..3
            $2023 bit 0 = run, bits 3:1 = mapper, bit 4 = pausa
+                 mapper: 0 = 2K, 1 = 4K, 2 = F8, 3 = F6, 4 = F4 (so' 16 KB cabem), 5 = FE (desde o passo 24)
            $2025 zera o diagnostico
            $2026 deslocamento vertical da janela, 8 bits com sinal, -16..+47 ($F0..$FF, $00..$2F);
                  valores fora da faixa sao limitados; vale a partir do quadro seguinte
            $2027 trava: bit 7 = 1 trava o buffer dos bits 1:0; bit 7 = 0 libera
   leitura: $2020 (R0) bits 1:0 = N (0..2), bits 7:2 = 0
            $2021 (R1) contador de quadros   $2022 (R2) linhas gravadas no quadro pronto
-           $2023 controle   $2024-$2026 "A26"   $2027 versao = $05
+           $2023 controle   $2024-$2026 "A26"   $2027 versao = $06
            $2028 misses   $2029 latencia do carregador
            $202A deslocamento em uso (depois do limite)
            $202B bit 6 = miss, bit 5 = FIFO estourou, bit 4 = ROM carregada (estavam em R0)

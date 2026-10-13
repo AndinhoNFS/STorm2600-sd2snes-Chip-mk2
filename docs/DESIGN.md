@@ -1,4 +1,4 @@
-# Design: player SNES v7 + bitstream Passo 23
+# Design: player SNES v7 + bitstream Passo 24
 
 ## Quadro na PSRAM
 
@@ -28,6 +28,22 @@ Passo 23: se a cor final de um pixel difere da cor guardada do seu índice mas
 coincide com outra das 4 guardadas, usa o índice dessa. Só acerta com até 4
 cores finais por linha (medido nos 6 jogos de teste).
 
+## TIA: atraso das escritas (Passo 24)
+
+- PF0/PF1/PF2: uma escrita só vale no início da próxima célula de 4 pixels
+  (primeiro clock de cor múltiplo de 4 que é ≥ h+3, sendo h o clock em que a
+  escrita chega). Há um pendente por registrador.
+- GRP0/GRP1: valem 1 pixel depois.
+- As demais escritas continuam valendo no clock de cor seguinte.
+
+## Mappers
+
+Valor em `$2023` bits 3:1, com a numeração do MiSTer; ver o cabeçalho de
+`fpga/a26_core.v`. Passo 24: 5 = FE (Activision 8 KB, Decathlon). No ciclo
+seguinte a um acesso a `$01FE`, o bit 5 do barramento de dados escolhe o
+banco (1 = primeiros 4 KB, 0 = segundos). O firmware ainda escolhe F8 para
+todo arquivo de 8 KB, então o FE só entra em uso quando ele passar o valor 5.
+
 ## Player SNES
 
 - IRQ V=232 (fase 0): force blank; trava o buffer N mais recente
@@ -51,9 +67,28 @@ cores finais por linha (medido nos 6 jogos de teste).
 
 | Leitura | Função |
 |---|---|
-| `$2027` | versão |
+| `$2027` | versão (`$06` no Passo 24) |
 | `$202D` | descartes |
 | `$202E/F` | N do último quadro |
+
+## Síntese
+
+ISE 14.7, XC3S400, clock de 96 MHz. A semente de placement é escolhida por
+varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0,010 ns.
+
+| | Passo 23 | Passo 24 |
+|---|---|---|
+| Versão em `$2027` | `$05` | `$06` |
+| Semente | 10 | 17 |
+| Folga a 96 MHz | +0,034 ns | +0,024 ns |
+| LUTs | 4982 (69%) | 5003 (69%) |
+| Slices | 2889 (80%) | 2875 (80%) |
+| FFs | 2205 | 2260 |
+| BRAM | 16/16 | 16/16 |
+| Sementes tentadas | 5 | 12 |
+
+O caminho crítico é o mesmo nos dois: da cor do pixel no TIA até o dado de
+escrita do gravador de vídeo (9 níveis de lógica). A margem está diminuindo.
 
 ## Temporização
 
