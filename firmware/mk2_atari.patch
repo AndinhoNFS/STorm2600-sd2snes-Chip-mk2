@@ -1,0 +1,180 @@
+--- a/src/atari.c
++++ b/src/atari.c
+@@ -20,8 +20,9 @@
+    hotspot ADDRESSES are facts of the cartridge hardware, and the byte patterns
+    that reference them are generated here from the 6502 opcode tables below.
+ 
+-   mk3-only: on the mk2 (LPC1754, tight flash and no Spartan-3 build of the core)
+-   everything below compiles to no-op stubs (has_a26 stays 0) -- see CONFIG_MK2.
++   mk2: the same detect/swap/stage code serves the sd2snes_atari core (FPGA_ATARI);
++   only the hand-over of the scheme differs (memory.c: a byte in the player image,
++   not CHIPFEAT).
+ */
+ 
+ #include <string.h>
+@@ -38,8 +39,6 @@
+ 
+ a26_romprops_t a26_romprops;
+ 
+-#ifndef CONFIG_MK2
+-
+ extern cfg_t CFG;   /* a26_video_width -> feat16[5] (picture width) in a26_id */
+ 
+ /* Both buffers live in the shared scratch (scratch.h, AHB SRAM) -- NOT plain .bss
+@@ -448,23 +447,3 @@
+   printf("A26: staging %s -> PSRAM %06lx\n", a26_rompath, (long)A26_ROM_PSRAM);
+   load_sram_offload((uint8_t*)a26_rompath, A26_ROM_PSRAM, 0);
+ }
+-
+-#else /* CONFIG_MK2: no-op stubs -- the Atari core is mk3-only (no Spartan-3
+-         build of fpga_a26 and the LPC1754 flash does not pay for the loader) */
+-
+-void a26_id(a26_romprops_t *props, uint8_t *filename) {
+-  (void)filename;
+-  props->has_a26 = 0;
+-  props->error = MENU_ERR_OK;
+-  props->error_param = NULL;
+-}
+-
+-uint8_t a26_update_file(uint8_t **filename_ref) {
+-  (void)filename_ref;
+-  return 1;
+-}
+-
+-void a26_load_rom(void) {
+-}
+-
+-#endif /* CONFIG_MK2 */
+--- a/src/atari.h
++++ b/src/atari.h
+@@ -27,7 +27,21 @@
+ /* SNES-side player loaded as the booted LoROM image. Built from snes/a26/
+    a26_snes.asm by build.sh and shipped in the release zip, same as the NES stub
+    and the SMS player (<system>_snes.bin = the SNES-side half of that system). */
++#ifdef CONFIG_MK2
++/* mk2: the player of the sd2snes_atari core; a new name so it never collides with an
++   a26_snes.bin (mk3 core, different register contract) left on the card. */
++#define A26_PLAYER_FILE ((const uint8_t*)"/sd2snes/atari_snes.bin")
++/* mk2: the core's register block is cleared on every SNES reset, so the PLAYER writes
++   mapper + run (register 3) at each boot.  The firmware tells it the mapper by patching
++   two bytes of the player image in PSRAM: $7FF0 = a26_bs_t, $7FF1 = magic.  LoROM
++   $00:FFF0/FFF1 are unused 65816 vector slots (emulation vectors start at $FFF4), and
++   nothing in the load path reads or rewrites them.  The player must leave them free. */
++#define A26_PLAYER_MAPPER_OFS   0x7FF0L
++#define A26_PLAYER_MAGIC_OFS    0x7FF1L
++#define A26_PLAYER_MAGIC        0xA2
++#else
+ #define A26_PLAYER_FILE ((const uint8_t*)"/sd2snes/a26_snes.bin")
++#endif
+ /* where the core reads the cartridge image from -- lockstep with the ROM fetch
+    base of verilog/sd2snes_a26 (ATARI-CORE-CONTRACT.md sec. 1). <=32768 B; the
+    core copies it into BRAM at reset and never reads PSRAM again. */
+--- a/src/fpga.h
++++ b/src/fpga.h
+@@ -66,6 +66,10 @@
+ /* Atari 2600 core (verilog/sd2snes_a26) -- mk3-only, like NES/SMS: only fpga_a26.bi3
+    exists, no mk2 .bit is planned (see atari.c). */
+ #define FPGA_A26 ((const uint8_t*)"/sd2snes/fpga_a26." FPGA_CONF_EXT)
++/* Atari 2600 on the mk2 (verilog/sd2snes_atari): a different, from-scratch core with
++   its own contract -- ROM read live from PSRAM, mapper/run in register 3 of the
++   $2020-$202F window (a26_regs.v), written by the player.  See atari.h. */
++#define FPGA_ATARI ((const uint8_t*)"/sd2snes/fpga_atari." FPGA_CONF_EXT)
+ /* Game Boy Color core (verilog/sd2snes_gbc, the SGB core promoted to CGB) -- mk3-only:
+    only fpga_gbc.bi3 exists, no mk2 .bit is planned (see gbc.c; on the mk2 a .gb/.gbc
+    keeps booting the SGB core).  Selected by gbc_id() through sgb_update_romprops. */
+--- a/src/memory.c
++++ b/src/memory.c
+@@ -763,8 +763,13 @@
+   /* Atari: the chipfeat (0xef) carries scheme/superchip/size_class/video width
+      (a26_feat_out; ATARI-CORE-CONTRACT sec. 7).  Same invariant as the NES above --
+      written BEFORE the reset below, never with the core already running. */
+-  fpga_set_chipfeat(a26_romprops.has_a26 ? a26_romprops.feat16
+-                    : nes_romprops.has_nes ? nes_romprops.mapper_flags16
++  /* mk2 (sd2snes_atari): no CHIPFEAT -- the scheme travels in the player image
++     (load_setup_masks) and the player writes it to register 3 of the core. */
++  fpga_set_chipfeat(
++#ifndef CONFIG_MK2
++                    a26_romprops.has_a26 ? a26_romprops.feat16 :
++#endif
++                      nes_romprops.has_nes ? nes_romprops.mapper_flags16
+                     : sgb_romprops.has_sgb ? sgb_romprops.fpga_sgbfeat
+                                            : romprops.fpga_dspfeat);
+   nes_dbg_log("POST_CHIPFEAT");        /* nesdbg: no-op fora de um load .nes */
+@@ -926,6 +931,15 @@
+   /* Atari 2600: stage the .a26 image into PSRAM before the SNES boots (the core copies
+      it into BRAM at reset and never reads PSRAM again).  No-op without a .a26. */
+   a26_load_rom();
++#ifdef CONFIG_MK2
++  /* sd2snes_atari: hand the mapper to the player, in the copy of it that load_stream
++     just put in PSRAM (see A26_PLAYER_MAPPER_OFS in atari.h) */
++  if (a26_romprops.has_a26) {
++    uint32_t player = c->base_addr + romprops.load_address;
++    sram_writebyte(a26_romprops.scheme, player + A26_PLAYER_MAPPER_OFS);
++    sram_writebyte(A26_PLAYER_MAGIC,    player + A26_PLAYER_MAGIC_OFS);
++  }
++#endif
+ 
+   /* SGB update local file properties */
+   if (sgb_romprops.has_sgb) {
+@@ -974,14 +988,19 @@
+     c->filename = c->a26_filename;
+ 
+     /* no SaveRAM: no scheme in the v0 set is battery backed (the Superchip RAM lives
+-       in the core).  rommask is deliberately NOT touched: unlike the NES stub (which
+-       is relocated to the 512KB RAM), the player IS the booted LoROM image in PSRAM,
+-       so the mask smc_id computed for it has to stand -- masking it down to the size
+-       of the .a26 would cut the player's own ROM. */
++       in the core).  rommask is never masked down to the size of the .a26: unlike the
++       NES stub (which is relocated to the 512KB RAM), the player IS the booted LoROM
++       image in PSRAM. */
+     romprops.ramsize_bytes  = 0;
+     romprops.srambase       = 0;
+     romprops.sramsize_bytes = 0;
+     rammask = 0;
++#ifdef CONFIG_MK2
++    /* sd2snes_atari: 4 MB mask, so the LoROM map shows the core's frame buffers
++       (PSRAM $380000) at $70:8000-$FFFF.  The player stays at $00:8000; banks
++       $01-$3F stop mirroring it. */
++    rommask = 0x3FFFFFL;
++#endif
+   }
+ 
+   /* SGB load GB RTC */
+@@ -1177,7 +1196,8 @@
+   uint8_t   flags       = c->flags;
+   uint32_t  file_offset = c->file_offset;
+ #ifdef CONFIG_MK2
+-  /* NES/SMS/Atari cores are mk3-only (no Spartan-3 build). The files ARE listed in
++  /* NES/SMS cores are mk3-only (no Spartan-3 build; a .a26 has its own mk2 core,
++     sd2snes_atari, and goes through). The files ARE listed in
+      the browser on mk2 so the user gets a clear "needs mk3" popup here instead
+      of .nes silently missing from the listing, or a .sms dying later with a
+      misleading missing-file popup for fpga_sms.bit / booting the header as a
+@@ -1185,8 +1205,7 @@
+   {
+     char *mk2_ext = strrchr((char*)filename, '.');
+     if (mk2_ext && (!strcasecmp(mk2_ext + 1, "nes")
+-                 || !strcasecmp(mk2_ext + 1, "sms")
+-                 || !strcasecmp(mk2_ext + 1, "a26"))) {
++                 || !strcasecmp(mk2_ext + 1, "sms"))) {
+       file_close();
+       sms_active = 0;  /* returning before sms_id() would leave a stale flag */
+       a26_romprops.has_a26 = 0;   /* same: returning before a26_id() leaves it stale */
+@@ -1301,7 +1320,17 @@
+      anything the LoROM header of the player could fake has to be dropped here, or the
+      prerequisite check below would demand a chip BIOS for a cartridge that has none. */
+   if (a26_romprops.has_a26) {
++#ifdef CONFIG_MK2
++    romprops.fpga_conf = FPGA_ATARI;
++    /* the cheat module is a stub in this core (no map/snescmd unlock): FEAT_DMA1 is
++       what opens the $2020-$202F register window to the player, and FEAT_CMD_UNLOCK
++       the snescmd window, so the player can write its own reset commands to MCU_CMD
++       ($2A00) -- there is no NMI hook under it (same reason as the GBC core in
++       load_set_features) */
++    romprops.fpga_features |= FEAT_DMA1 | FEAT_CMD_UNLOCK;
++#else
+     romprops.fpga_conf = FPGA_A26;
++#endif
+     romprops.has_dspx = 0; romprops.has_gsu = 0; romprops.has_sa1 = 0;
+     romprops.fpga_dspfeat = 0;
+     romprops.error = MENU_ERR_OK;
