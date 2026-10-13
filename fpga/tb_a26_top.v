@@ -185,6 +185,43 @@ module tb_a26_top;
     end
   endtask
 
+  // FE (mapper 5, step 24): the bank follows D5 of the byte after an access to $01FE.
+  //   first 4K ($F000):  LDX #$FF : TXS : LDA #$A1 : STA $80 : JSR $D100 : LDA #$A3 : STA $82 : JMP *
+  //   second 4K ($D100): LDA #$A2 : STA $81 : RTS
+  // The JSR pushes to $01FF/$01FE and then reads the target's high byte $D1 (D5 = 0 -> second 4K);
+  // the RTS pulls $01FE/$01FF and the high byte $F0 (D5 = 1) brings the first 4K back.
+  task run_fe;
+    integer bad;
+    begin
+      for (k = 0; k < 16384; k = k + 1) slot.mem[k] = 8'hEE;
+      slot.mem[0]  = 8'hA2; slot.mem[1]  = 8'hFF; slot.mem[2]  = 8'h9A;
+      slot.mem[3]  = 8'hA9; slot.mem[4]  = 8'hA1; slot.mem[5]  = 8'h85; slot.mem[6] = 8'h80;
+      slot.mem[7]  = 8'h20; slot.mem[8]  = 8'h00; slot.mem[9]  = 8'hD1;
+      slot.mem[10] = 8'hA9; slot.mem[11] = 8'hA3; slot.mem[12] = 8'h85; slot.mem[13] = 8'h82;
+      slot.mem[14] = 8'h4C; slot.mem[15] = 8'h0E; slot.mem[16] = 8'hF0;
+      slot.mem[4092] = 8'h00; slot.mem[4093] = 8'hF0;                       // reset vector, in the first 4K
+      slot.mem[4096 + 256] = 8'hA9; slot.mem[4096 + 257] = 8'hA2;
+      slot.mem[4096 + 258] = 8'h85; slot.mem[4096 + 259] = 8'h81;
+      slot.mem[4096 + 260] = 8'h60;
+      slot.mem[8188] = 8'h55; slot.mem[8189] = 8'h55;                       // the end of the image is NOT a vector
+      reset = 1; repeat (3) @(negedge clk); reset = 0; repeat (3) @(negedge clk);
+      sreg_wr(4'd3, {4'b0000, 3'd5, 1'b1});
+      wait_loaded;
+      #1000000;
+      bad = 0;
+      if (top.core.u_riot.ram[0] !== 8'hA1) bad = bad + 1;
+      if (top.core.u_riot.ram[1] !== 8'hA2) bad = bad + 1;
+      if (top.core.u_riot.ram[2] !== 8'hA3) bad = bad + 1;
+      sreg_rd(4'd8, v);
+      if (bad != 0 || v != 8'h00 || top.core.bank !== 3'd0 || top.core.cpu_ab < 16'hF00E || top.core.cpu_ab > 16'hF010) begin
+        errs = errs + 1;
+        $display("FAIL  mapper 5 (FE): RAM $80..$82 = %02h %02h %02h, %0d misses, bank %0d, CPU at %04h", top.core.u_riot.ram[0],
+                 top.core.u_riot.ram[1], top.core.u_riot.ram[2], v, top.core.bank, top.core.cpu_ab);
+      end else
+        $display("ok    mapper 5 (FE): JSR into the second 4K and RTS back, CPU parked in the first 4K");
+    end
+  endtask
+
   // 2K: the 2 KB image is mirrored, so $FFF0 and $F7F0 are the same byte (offset $7F0)
   task run_2k;
     begin
@@ -211,7 +248,7 @@ module tb_a26_top;
     repeat (4) @(negedge clk);
 
     sreg_rd(4'd4, v); expect8("signature 'A'", v, 8'h41);
-    sreg_rd(4'd7, v); expect8("version",       v, 8'h05);
+    sreg_rd(4'd7, v); expect8("version",       v, 8'h06);
     sreg_rd(4'd13, v); expect8("dropped frames at start", v, 8'h00);
     if (loop_enable !== 1'b0 || busy !== 2'b00) begin errs = errs + 1; $display("FAIL  loop_enable/busy not idle"); end
     sreg_wr(4'd0, 8'hD7);
@@ -348,6 +385,7 @@ module tb_a26_top;
     run_banked(3'd1, 1, 8'h00, 8'hB0);                   // 4K again, with the common skeleton
     run_banked(3'd2, 2, 8'hF8, 8'hC0);                   // F8: hotspots $1FF8/$1FF9
     run_banked(3'd3, 4, 8'hF6, 8'hD0);                   // F6: hotspots $1FF6..$1FF9
+    run_fe;                                              // FE: bank from the byte after $01FE
     expect8("CPU cycles before loaded", {7'b0, early}, 8'h00);
 
     if (errs == 0) $display("PASS  a26_top");

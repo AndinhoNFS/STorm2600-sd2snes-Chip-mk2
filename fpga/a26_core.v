@@ -31,6 +31,11 @@
 // MAPPERS (mapper input)
 //   0 = 2K (mirrored)   1 = 4K   2 = F8 (8K)   3 = F6 (16K)   4 = F4 (32K)
 //   Hotspots switch the bank on the access itself.  Power-on bank = last bank.
+//   5 = FE (Activision, 8K; step 24): no hotspot in the cartridge window.  The cycle after
+//   any access to $01FE (the stack byte of a JSR / RTS made with SP = $FF) carries the high
+//   byte of the target / return address on the data bus: D5 = 1 ($Fxxx) selects the first
+//   4K of the image, D5 = 0 ($Dxxx) the second.  Power-on bank = the first 4K (reset vector
+//   $F000 at image offset $0FFC).  Same rule as the MiSTer core (FE_latch, not cpu_d(5)).
 //
 // CONTROLS: no logic here.  The shell owns the register window that the SNES
 // writes (pads, console switches) and simply drives these inputs:
@@ -207,14 +212,24 @@ module a26_core #(
       3'd2:    last_bank = 3'd1;
       3'd3:    last_bank = 3'd3;
       3'd4:    last_bank = 3'd7;
+      3'd5:    last_bank = 3'd0;      // FE powers up in the first 4K
       default: last_bank = 3'd0;
     endcase
+  end
+
+  // FE: fe_arm = the cycle now completing follows an access to $01FE; fe_bus = its data bus
+  reg        fe_arm;
+  wire [7:0] fe_bus = cpu_we ? cpu_dout : cpu_din;
+  always @(posedge clk) begin
+    if (rst)         fe_arm <= 1'b0;
+    else if (cpu_ce) fe_arm <= (cpu_ab[12:0] == 13'h01FE);
   end
 
   reg [2:0] bank;
   always @(posedge clk) begin
     if (rst)                                bank <= last_bank;
     else if (cpu_ce && rom_cs && hs_hit)    bank <= hs_bank;
+    else if (cpu_ce && mapper == 3'd5 && fe_arm) bank <= {2'b00, ~fe_bus[5]};
   end
 
   wire [2:0] bank_eff = (rom_cs && hs_hit) ? hs_bank : bank;

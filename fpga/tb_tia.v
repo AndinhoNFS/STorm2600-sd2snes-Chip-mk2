@@ -355,6 +355,40 @@ module tb_tia;
     inpt4 = 0; tia_rd(6'h0C, v); expect8("INPT4 pressed",  v, 8'h00);
     inpt4 = 1;
 
+    // ================= write latency (step 24) =======================
+    // PFx: a write on clock h is first drawn on the first clock that is a multiple of 4 and
+    // >= h + 3.  PF1 covers pixels 16..47; one write per line, the four phases of h % 4.
+    wait_h(8'd10);
+    clear_all;
+    settle;
+    tia_wr_at(8'd86, 6'h0E, 8'hFF);               // h % 4 = 2: clock 92 = pixel 24
+    wait_h(8'd2);
+    expect_range("pf1 on, h=86: old", 2'd0, 16, 23);
+    expect_range("pf1 on, h=86: new", 2'd1, 24, 47);
+    tia_wr_at(8'd89, 6'h0E, 8'h00);               // h % 4 = 1: clock 92 = pixel 24
+    wait_h(8'd2);
+    expect_range("pf1 off, h=89: old", 2'd1, 16, 23);
+    expect_range("pf1 off, h=89: new", 2'd0, 24, 47);
+    tia_wr_at(8'd92, 6'h0E, 8'hFF);               // h % 4 = 0: clock 96 = pixel 28
+    wait_h(8'd2);
+    expect_range("pf1 on, h=92: old", 2'd0, 16, 27);
+    expect_range("pf1 on, h=92: new", 2'd1, 28, 47);
+    tia_wr_at(8'd95, 6'h0E, 8'h00);               // h % 4 = 3: clock 100 = pixel 32
+    wait_h(8'd2);
+    expect_range("pf1 off, h=95: old", 2'd1, 16, 31);
+    expect_range("pf1 off, h=95: new", 2'd0, 32, 47);
+    // GRPx: one colour clock after the other registers.  Player 0 at pixels 3..10; GRP0
+    // written on clock 74 (pixel 6) is first drawn on clock 76 (pixel 8).
+    wait_h(8'd10);
+    clear_all;
+    tia_wr_at(8'd50, 6'h10, 8'h00);               // RESP0 inside HBLANK: pos 3
+    settle;
+    tia_wr_at(8'd74, 6'h1B, 8'hFF);
+    wait_h(8'd2);
+    expect_range("grp0, h=74: old", 2'd0, 3, 7);
+    expect_range("grp0, h=74: new", 2'd2, 8, 10);
+    tia_wr(6'h1B, 8'h00);
+
     // ================= VBLANK ========================================
     wait_h(8'd10);
     tia_wr(6'h01, 8'h02);

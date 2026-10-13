@@ -290,7 +290,7 @@ TIMESPEC TS_a26_rom = FROM "a26_rom_ram" TO "a26_slow_core" 125 ns;
 ENTRY_RE = re.compile(r"[ \t]*<file\b(?:[^>]*/>|[^>]*>.*?</file>)[ \t]*\n?", re.S)
 
 
-PLACER_SEED = 10
+PLACER_SEED = 17
 
 
 def make_xise(text, base_files, local_files):

@@ -35,8 +35,18 @@
 //   RESMPx  : on 1->0 the missile snaps to the player centre
 //             (+4, or +8 for NUSIZ=5, +16 for NUSIZ=7).
 //
+// WRITE LATENCY (step 24, measured against the ALE in diagnosis 3)
+//   PF0/PF1/PF2 : the playfield only changes at the start of a 4-pixel cell.  A write that
+//             lands on colour clock h (the last clock of the CPU cycle) takes effect on the
+//             first clock that is a multiple of 4 and >= h + 3, i.e. 2..5 clocks later than
+//             the other registers.  One pending value per register (pfw_*), so writes on
+//             consecutive CPU cycles to different PF registers do not disturb each other.
+//   GRP0/GRP1 : one colour clock later than the other registers (gw_*); the VDEL copies
+//             (dgrp0/dgrp1/denabl) are taken at that same moment.
+//
 // NOT IMPLEMENTED YET: RSYNC, paddle dump timing, audio generation (the AUD
-// registers are exported), mid-pixel latency of PF/GRP writes.
+// registers are exported), latency of the other writes (NUSIZ, REFP, ...), HMOVE as
+// timed extra clocks, the floating data bus in bits 5..0 of the reads.
 //
 // STATUS: untested when written.  Verify with tb_tia.v.
 //
@@ -98,6 +108,12 @@ module tia (
 
   reg [3:0] r_audc0, r_audc1, r_audv0, r_audv1;
   reg [4:0] r_audf0, r_audf1;
+
+  // pending writes (see WRITE LATENCY): bit 0 = PF0 / GRP0, bit 1 = PF1 / GRP1, bit 2 = PF2
+  reg [2:0] pfw_pend, pfw_skip;
+  reg [7:0] pfw_v0, pfw_v1, pfw_v2;
+  reg [1:0] gw_pend;
+  reg [7:0] gw_v0, gw_v1;
 
   assign rdy      = ~wsync;
   assign phi2_ce  = cc_ce & (ph == 2'd2);
@@ -314,6 +330,8 @@ module tia (
       r_audc0 <= 4'd0; r_audc1 <= 4'd0; r_audv0 <= 4'd0; r_audv1 <= 4'd0;
       r_audf0 <= 5'd0; r_audf1 <= 5'd0;
       pix_stb <= 1'b0; pix_x <= 8'd0; pix_vis <= 1'b0; pix_src <= 2'd0; pix_col <= 7'd0;
+      pfw_pend <= 3'd0; pfw_skip <= 3'd0; pfw_v0 <= 8'd0; pfw_v1 <= 8'd0; pfw_v2 <= 8'd0;
+      gw_pend <= 2'd0; gw_v0 <= 8'd0; gw_v1 <= 8'd0;
     end else begin
       // fire-button latches (VBLANK D6)
       if (!vb_latch) begin l4 <= 1'b1; l5 <= 1'b1; end
@@ -357,6 +375,29 @@ module tia (
         end
       end
 
+      // ---- pending PFx / GRPx writes ------------------------------------
+      // This comes before the write decode, so a new write to the same register on this
+      // very clock replaces the pending one.  A PFx write made on clock h skips the clock
+      // h + 1 (pfw_skip) and is then applied on the first clock with hcount % 4 == 3: the
+      // pixel of the next clock, a multiple of 4 (68 is one, so that is a cell start), is
+      // the first one drawn with the new value.
+      if (cc_ce) begin
+        if (pfw_pend[0]) begin
+          if (pfw_skip[0]) pfw_skip[0] <= 1'b0;
+          else if (hcount[1:0] == 2'b11) begin pf0 <= pfw_v0; pfw_pend[0] <= 1'b0; end
+        end
+        if (pfw_pend[1]) begin
+          if (pfw_skip[1]) pfw_skip[1] <= 1'b0;
+          else if (hcount[1:0] == 2'b11) begin pf1 <= pfw_v1; pfw_pend[1] <= 1'b0; end
+        end
+        if (pfw_pend[2]) begin
+          if (pfw_skip[2]) pfw_skip[2] <= 1'b0;
+          else if (hcount[1:0] == 2'b11) begin pf2 <= pfw_v2; pfw_pend[2] <= 1'b0; end
+        end
+        if (gw_pend[0]) begin gw_pend[0] <= 1'b0; grp0 <= gw_v0; dgrp1 <= grp1; end
+        if (gw_pend[1]) begin gw_pend[1] <= 1'b0; grp1 <= gw_v1; dgrp0 <= grp0; denabl <= enabl; end
+      end
+
       // ---- CPU register writes (coincide with phi2_ce) ----------------
       if (wr) begin
         case (a)
@@ -373,9 +414,9 @@ module tia (
           6'h0A: ctrlpf <= din[5:0];
           6'h0B: refp0 <= din[3];
           6'h0C: refp1 <= din[3];
-          6'h0D: pf0 <= din;
-          6'h0E: pf1 <= din;
-          6'h0F: pf2 <= din;
+          6'h0D: begin pfw_v0 <= din; pfw_pend[0] <= 1'b1; pfw_skip[0] <= 1'b1; end   // PF0
+          6'h0E: begin pfw_v1 <= din; pfw_pend[1] <= 1'b1; pfw_skip[1] <= 1'b1; end   // PF1
+          6'h0F: begin pfw_v2 <= din; pfw_pend[2] <= 1'b1; pfw_skip[2] <= 1'b1; end   // PF2
           6'h10: pos_p0 <= (hs < 8'd68) ? 8'd3 : rpos(hs, 3'd5);     // RESP0
           6'h11: pos_p1 <= (hs < 8'd68) ? 8'd3 : rpos(hs, 3'd5);     // RESP1
           6'h12: pos_m0 <= (hs < 8'd68) ? 8'd2 : rpos(hs, 3'd4);     // RESM0
@@ -387,8 +428,8 @@ module tia (
           6'h18: r_audf1 <= din[4:0];
           6'h19: r_audv0 <= din[3:0];
           6'h1A: r_audv1 <= din[3:0];
-          6'h1B: begin grp0 <= din; dgrp1 <= grp1; end
-          6'h1C: begin grp1 <= din; dgrp0 <= grp0; denabl <= enabl; end
+          6'h1B: begin gw_v0 <= din; gw_pend[0] <= 1'b1; end                           // GRP0
+          6'h1C: begin gw_v1 <= din; gw_pend[1] <= 1'b1; end                           // GRP1
           6'h1D: enam0 <= din[1];
           6'h1E: enam1 <= din[1];
           6'h1F: enabl <= din[1];
