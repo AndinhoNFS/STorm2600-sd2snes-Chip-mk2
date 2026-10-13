@@ -56,7 +56,7 @@ snes/    player SNES (65816); o fonte do v7 ainda não foi importado
 tools/   scripts de comparação e medição contra o emulador (ALE)
 firmware/ mudanças no firmware do sd2snes para o modo Atari (patch)
 sdcard/  arquivos prontos para o cartão (bitstream, player e firmware)
-docs/    design, layout do buffer, pendências e notas de trabalho
+docs/    design, layout do buffer, descrição do player, pendências e notas
 ```
 
 Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).

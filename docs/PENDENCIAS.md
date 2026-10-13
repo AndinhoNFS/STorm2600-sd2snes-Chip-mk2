@@ -4,8 +4,9 @@
 
 - **Decathlon (e outros FE da Activision)**: tela preta no console. O core
   já tem o mapper FE (valor 5), mas o firmware escolhe F8 para todo arquivo
-  de 8 KB. Falta o firmware detectar FE e passar 5; também falta conferir que
-  o player v7 repassa esse valor a `$2023`.
+  de 8 KB. Falta o firmware detectar FE e passar 5. Pela descrição do player
+  (`docs/player_descricao_completa.md`), o v7 repassa valores até 7 ao
+  registrador 3; isso não foi conferido contra o fonte.
 - **Decathlon**: a bola sai 1 pixel à esquerda do emulador numa linha em que o
   jogo faz RESBL logo depois de HMOVE (8 pixels por quadro, só em simulação).
 - **Leituras do TIA**: os bits 5..0 voltam 0 em vez do último valor do
