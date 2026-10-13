@@ -1,0 +1,143 @@
+== sfxdma (19 ports, 19 connected in main.v)
+   input             clkin
+   input             reset
+   input  [23:0]     sfx_base
+   input  [23:0]     sfx_len
+   input             kick
+   input             disable_in
+   input             DAC_STATUS
+   input             sd_dma_active
+   input             BUS_RDY
+   output            BUS_RRQ
+   output [23:0]     ROM_ADDR
+   input  [7:0]      ROM_DATA_IN
+   output            dac_we
+   output [10:0]     dac_addr
+   output [7:0]      dac_data
+   output            dac_active
+   output            prime_hold
+   output            active
+   output            done
+== srtc (16 ports, 16 connected in main.v)
+   input             clkin
+   input             addr_in
+   input  [3:0]      data_in
+   output [7:0]      data_out
+   input  [59:0]     rtc_data_in
+   output [59:0]     rtc_data_out
+   input             reg_oe_falling
+   input             reg_oe_rising
+   input             reg_we_rising
+   input             enable
+   output            rtc_we
+   input             reset
+   output [4:0]      srtc_state
+   output            srtc_reg_we_rising
+   output [3:0]      srtc_rtc_ptr
+   output [5:0]      srtc_we_sreg
+== rtc (6 ports, 6 connected in main.v)
+   input             clkin
+   input             pgm_we
+   input  [55:0]     rtc_data_in
+   input             we1
+   input  [59:0]     rtc_data_in1
+   output [59:0]     rtc_data
+== msu (26 ports, 26 connected in main.v)
+   input             clkin
+   input             enable
+   input  [13:0]     pgm_address
+   input  [7:0]      pgm_data
+   input             pgm_we
+   input  [2:0]      reg_addr
+   input  [7:0]      reg_data_in
+   output [7:0]      reg_data_out
+   input             reg_oe_falling
+   input             reg_oe_rising
+   input             reg_we_rising
+   output [7:0]      status_out
+   output [7:0]      volume_out
+   output            volume_latch_out
+   output [31:0]     addr_out
+   output [15:0]     track_out
+   input  [5:0]      status_reset_bits
+   input  [5:0]      status_set_bits
+   input             status_reset_we
+   input  [13:0]     msu_address_ext
+   input             msu_address_ext_write
+   output            DBG_msu_reg_oe_rising
+   output            DBG_msu_reg_oe_falling
+   output            DBG_msu_reg_we_rising
+   output [13:0]     DBG_msu_address
+   output            DBG_msu_address_ext_write_rising
+== ctx (19 ports, 19 connected in main.v)
+   input             clkin
+   input             reset
+   input  [23:0]     SNES_ADDR
+   input  [7:0]      SNES_PA
+   input             SNES_RD_end_PRE
+   input             SNES_WR_end_PRE
+   input             SNES_PARD_end_PRE
+   input             SNES_PAWR_end_PRE
+   input  [7:0]      SNES_DATA_IN_PRE
+   output            OE_WR_ENABLE
+   output            OE_PAWR_ENABLE
+   output            OE_PARD_ENABLE
+   output            BUS_WRQ
+   input             BUS_RDY
+   input             snescmd_unlock
+   output [23:0]     ROM_ADDR
+   output [15:0]     ROM_DATA
+   output            ROM_WORD_ENABLE
+   output            DBG
+== bsx (23 ports, 23 connected in main.v)
+   input             clkin
+   input             reg_oe_falling
+   input             reg_oe_rising
+   input             reg_we_rising
+   input  [23:0]     snes_addr_in
+   input  [7:0]      reg_data_in
+   output [7:0]      reg_data_out
+   input  [7:0]      reg_reset_bits
+   input  [7:0]      reg_set_bits
+   output [14:0]     regs_out
+   input             pgm_we
+   input             use_bsx
+   input             bs_slot
+   input             bs_hirom
+   output            data_ovr
+   output            flash_writable
+   input  [59:0]     rtc_data_in
+   output [9:0]      bs_page_out
+   output            bs_page_enable
+   output [8:0]      bs_page_offset
+   input             feat_bs_base_enable
+   output [1:0]      bs_erase_seq
+   output [3:0]      bs_erase_blk
+== cheat (27 ports, 27 connected in main.v)
+   input             clk
+   input  [7:0]      SNES_PA
+   input  [23:0]     SNES_ADDR
+   input  [7:0]      SNES_DATA
+   input             SNES_wr_strobe
+   input             SNES_rd_strobe
+   input             SNES_rd_end_strobe
+   input             SNES_reset_strobe
+   input             SNES_PAWR_raw
+   input             snescmd_enable
+   input             nmicmd_enable
+   input             return_vector_enable
+   input             branch1_enable
+   input             branch2_enable
+   input             branch3_enable
+   input             exe_present
+   input             pad_latch
+   input             snes_ajr
+   input             SNES_cycle_start
+   input  [2:0]      pgm_idx
+   input             pgm_we
+   input  [31:0]     pgm_in
+   input             feat_cmd_unlock_in
+   output [7:0]      data_out
+   output            cheat_hit
+   output            snescmd_unlock
+   output            map_unlock

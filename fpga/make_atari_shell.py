@@ -1,0 +1,466 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+"""
+make_atari_shell.py -- create verilog/sd2snes_atari/ next to an UNTOUCHED
+sd2snes tree.  Nothing under sd2snes_base is ever written to.
+
+What it generates (all new files, in the new directory only):
+  * main.v       a copy of sd2snes_base/main.v with exactly two instances
+                 replaced:  `dma snes_dma`  -> `a26_top snes_a26`
+                            `dac snes_dac`  -> `a26_i2s snes_dac`
+  * stub_*.v     port-compatible stubs (all outputs tied to 0) for the modules
+                 the Atari mode does not use: sfxdma srtc rtc msu ctx bsx cheat
+                 (their ports are parsed from the ORIGINAL files)
+  * Makefile     CORE = atari; the unchanged sources are taken from
+                 ../sd2snes_base through VSRC_DIR (the mechanism common.mk
+                 already has), the new ones are listed in VSRC_LOCAL
+  * ucf.extra    multicycle constraint for the slow Atari logic; common.mk
+                 puts it in front of sd2snes_base/main.ucf
+  * config.vh, sd2snes_atari.xise   plain copies
+  * a26 sources  copied from --src
+  * diff_main.txt  unified diff original main.v -> new main.v, for auditing
+
+Every edit asserts that the text it replaces exists exactly once; on any
+mismatch the script stops and writes nothing.
+
+usage:  make_atari_shell.py REPO_ROOT --src DIR_WITH_A26_FILES [--dry-run]
+"""
+import argparse
+import difflib
+import pathlib
+import re
+import shutil
+import sys
+
+REMOVE = ["sfxdma", "srtc", "rtc", "msu", "ctx", "bsx", "cheat"]
+KEEP = ["address.v", "clk_test.v", "dcm.v", "mcu_cmd.v", "sd_dma.v", "spi.v"]
+A26_FILES = ["a26_top.v", "a26_i2s.v", "a26_core.v", "a26_regs.v", "a26_mem.v",
+             "a26_vidwr.v", "a26_tdict.v", "m6507.v", "riot6532.v", "tia.v", "tia_audio.v"]
+LOCAL_FILES = ["main.v"] + A26_FILES + ["stub_%s.v" % m for m in REMOVE]
+
+
+class Fail(Exception):
+    pass
+
+
+# --------------------------------------------------------------------------
+# Verilog header parsing
+# --------------------------------------------------------------------------
+def strip_comments(s):
+    s = re.sub(r"/\*.*?\*/", "", s, flags=re.S)
+    return re.sub(r"//[^\n]*", "", s)
+
+
+def balanced(text, start):
+    """text[start] == '(' -> (inner text, index after the matching ')')"""
+    assert text[start] == "("
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:i], i + 1
+    raise Fail("unbalanced parentheses")
+
+
+def split_top(s):
+    out, depth, cur = [], 0, []
+    for ch in s:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    if "".join(cur).strip():
+        out.append("".join(cur))
+    return [x.strip() for x in out]
+
+
+PORT_RE = re.compile(
+    r"^(input|output|inout)?\s*(?:(?:reg|wire)\s+)?(?:signed\s+)?(\[[^\]]*\])?\s*(\w+)\s*(?:=.*)?$", re.S)
+
+
+def parse_ports(text, name):
+    """-> list of (direction, range_text, port_name) in header order"""
+    t = strip_comments(text)
+    m = re.search(r"\bmodule\s+%s\b" % re.escape(name), t)
+    if not m:
+        raise Fail("module %s not found" % name)
+    i = m.end()
+    while t[i].isspace():
+        i += 1
+    if t[i] == "#":
+        _, i = balanced(t, t.index("(", i))
+        while t[i].isspace():
+            i += 1
+    if t[i] != "(":
+        raise Fail("%s: no port list" % name)
+    inner, after = balanced(t, i)
+    items = split_top(re.sub(r"\s+", " ", inner))
+    ports, last_dir, last_rng = [], None, ""
+    ansi = False
+    for it in items:
+        pm = PORT_RE.match(it)
+        if not pm:
+            raise Fail("%s: cannot parse port item %r" % (name, it))
+        d, rng, nm = pm.group(1), pm.group(2) or "", pm.group(3)
+        if d:
+            ansi = True
+            last_dir, last_rng = d, rng
+        elif ansi and last_dir:
+            d, rng = last_dir, last_rng
+        ports.append([d, rng, nm])
+    if not ansi:                       # old style: directions are in the body
+        body = t[after:]
+        body = body[:body.index("endmodule")] if "endmodule" in body else body
+        decl = {}
+        for dm in re.finditer(
+                r"\b(input|output|inout)\s+(?:(?:reg|wire)\s+)?(?:signed\s+)?(\[[^\]]*\])?\s*([\w\s,]+?);", body):
+            for nm in [x.strip() for x in dm.group(3).split(",") if x.strip()]:
+                decl[nm] = (dm.group(1), (dm.group(2) or "").strip())
+        for p in ports:
+            if p[2] not in decl:
+                raise Fail("%s: port %s has no direction declaration" % (name, p[2]))
+            p[0], p[1] = decl[p[2]]
+    return [tuple(p) for p in ports]
+
+
+def make_stub(name, ports):
+    lines = ["// SPDX-License-Identifier: GPL-2.0-or-later",
+             "// AUTO-GENERATED by make_atari_shell.py -- port-compatible stub of `%s`." % name,
+             "// All outputs are tied to 0: this module is not used in the Atari mode,",
+             "// and XST removes whatever logic only fed from it.",
+             "`timescale 1ns / 1ps", "", "module %s (" % name]
+    decl = []
+    for d, rng, nm in ports:
+        decl.append("  %s %s%s" % (d, (rng + " ") if rng else "", nm))
+    lines.append(",\n".join(decl))
+    lines.append(");")
+    for d, rng, nm in ports:
+        if d == "output":
+            lines.append("assign %s = 1'b0;" % nm)
+        elif d == "inout":
+            lines.append("assign %s = 1'bz;" % nm)
+    lines.append("endmodule")
+    return "\n".join(lines) + "\n"
+
+
+# --------------------------------------------------------------------------
+# main.v surgery
+# --------------------------------------------------------------------------
+DAC_NEW = """\
+// ---- Atari mode: audio comes from the TIA mix, not from dac.v + dac_buf ------
+// (replaces `dac snes_dac`; same MCLK/LRCK/SDOUT pin timing)
+wire [4:0]         a26_aud_mix;
+wire signed [15:0] a26_aud_sample;
+assign DAC_STATUS = 1'b0;
+a26_i2s snes_dac(
+  .clkin(CLK2),
+  .sample(a26_aud_sample),
+  .sdout(DAC_SDOUT),
+  .mclk_out(DAC_MCLK),
+  .lrck_out(DAC_LRCK),
+  .sclk_out()
+);
+"""
+
+DMA_NEW = """\
+// ---- Atari mode: the whole Atari subsystem sits where the FPGA copier was ----
+// (replaces `dma snes_dma`; identical ports plus the audio outputs).  The
+// $2020-$202F window (dma_enable) and the MCU_DMA_* path are the Atari
+// register window, the DMA_* slot carries ROM reads and frame-buffer writes.
+a26_top snes_a26 (
+  .clkin(CLK2),
+  .reset(SNES_reset_strobe),
+  .enable(MCU_DMA_ACTIVE | dma_enable),
+
+  .reg_addr(MCU_DMA_ACTIVE ? MCU_DMA_ADDR : SNES_ADDR[3:0]),
+  .reg_data_in(MCU_DMA_ACTIVE ? MCU_DMA_DATA : DMA_SNES_DATA_IN),
+  .reg_data_out(DMA_SNES_DATA_OUT),
+
+  .reg_oe_falling(SNES_RD_start),
+  .reg_we_rising(MCU_DMA_ACTIVE ? MCU_DMA_WE : SNES_WR_end),
+
+  .loop_enable(DMA_LOOP_ENABLE),
+  .busy(DMA_BUSY),
+
+  .BUS_RDY(DMA_RDY),
+  .BUS_RRQ(DMA_RRQ),
+  .BUS_WRQ(DMA_WRQ),
+
+  .ROM_ADDR(DMA_ADDR),
+  .ROM_DATA_OUT(DMA_DOUT),
+  .ROM_DATA_IN(DMA_DINr),
+  .ROM_WORD_ENABLE(DMA_WORD),
+
+  .aud_mix(a26_aud_mix),
+  .aud_sample(a26_aud_sample)
+);
+"""
+
+
+def replace_block(text, head_re, new):
+    pat = re.compile(r"^" + head_re + r"\n.*?^\);\n", re.S | re.M)
+    found = pat.findall(text)
+    if len(found) != 1:
+        raise Fail("expected exactly one instance matching %r, found %d" % (head_re, len(found)))
+    return pat.sub(lambda _m: new, text, count=1)
+
+
+def instance_ports(text, mod):
+    pat = re.compile(r"^%s\s+\w+\s*\(\n(.*?)^\);\n" % mod, re.S | re.M)
+    ms = pat.findall(text)
+    if len(ms) != 1:
+        raise Fail("expected exactly one instance of %s in main.v, found %d" % (mod, len(ms)))
+    return re.findall(r"\.(\w+)\s*\(", strip_comments(ms[0]))
+
+
+MAKEFILE = """\
+# Atari 2600 mode for the sd2snes Mk.II (XC3S400).  GENERATED by make_atari_shell.py.
+#
+# The unchanged shell sources come from ../sd2snes_base (VSRC_DIR); only the
+# files listed in VSRC_LOCAL live here.  Modules the Atari mode does not use
+# are replaced by port-compatible stubs (stub_*.v), to fit the XC3S400.
+CORE = atari
+
+VSRC_DIR = ../sd2snes_base
+VSRC = {keep}
+VHSRC =
+
+VSRC_LOCAL = main.v {a26} \\
+             {stubs}
+
+COMMON_IP = snescmd_buf
+
+HEADER = config.vh
+
+XIL_IP =
+XIL_IPCORE_DIR = ../sd2snes_base/ip/mk2
+
+INT_IP = pll
+
+include ../settings.mk
+include ../common.mk
+"""
+
+UCF_EXTRA = """\
+# Atari core: timing exceptions.  GENERATED by make_atari_shell.py.
+#
+# Flip-flops under snes_a26/core and snes_a26/vid change only on a
+# colour-clock, CPU-cycle or pixel enable, EXCEPT the ones in "a26_fast"
+# (they change or are sampled on every clk).  The enables are at least 26 clk
+# (270 ns at 96 MHz) apart; 125 ns = 12 clock periods.
+# core -> vid is NOT relaxed: vid samples the TIA outputs one clk after they
+# change.  Paths that start in a26_fast or enter/leave a group keep 96 MHz.
+# rom_q stays in the slow group: rom_ack must arrive >= 12 clk before cpu_ce
+# (it comes 16 clk after rom_rd, in a CPU cycle of ~80).
+INST "snes_a26/core/*" TNM = FFS "a26_core_all";
+INST "snes_a26/vid/*" TNM = FFS "a26_vid_all";
+INST "snes_a26/core/acc*"          TNM = FFS "a26_fast";
+INST "snes_a26/core/cc_ce_r"       TNM = FFS "a26_fast";
+INST "snes_a26/core/ce_d"          TNM = FFS "a26_fast";
+INST "snes_a26/core/u_tia/pix_stb" TNM = FFS "a26_fast";
+INST "snes_a26/vid/fb_wr"          TNM = FFS "a26_fast";
+INST "snes_a26/vid/vsync_d"        TNM = FFS "a26_fast";
+INST "snes_a26/vid/pub_pend"       TNM = FFS "a26_fast";
+TIMEGRP "a26_slow_core" = "a26_core_all" EXCEPT "a26_fast";
+TIMEGRP "a26_slow_vid"  = "a26_vid_all" EXCEPT "a26_fast";
+TIMESPEC TS_a26_slow = FROM "a26_slow_core" TO "a26_slow_core" 125 ns;
+TIMESPEC TS_a26_vid  = FROM "a26_slow_vid"  TO "a26_slow_vid"  125 ns;
+# RIOT RAM: its output changes one clk after cpu_ce and only feeds cpu_din.
+INST "snes_a26/core/u_riot/Mram_ram" TNM = RAMS "a26_riot_ram";
+TIMESPEC TS_a26_riot = FROM "a26_riot_ram" TO "a26_slow_core" 125 ns;
+# Cartridge ROM (16 KB of block RAM in a26_mem): its read address changes only on
+# rom_rd and a26_mem holds rom_ack back for ACK_DLY clk, so the output has been
+# stable for 15 clk when the core registers it.  Do not shorten ACK_DLY below 12.
+INST "snes_a26/memc/Mram_cart*" TNM = RAMS "a26_rom_ram";
+TIMESPEC TS_a26_rom = FROM "a26_rom_ram" TO "a26_slow_core" 125 ns;
+"""
+
+
+# --------------------------------------------------------------------------
+# .xise: keep every property of the base project, replace only the file list
+# --------------------------------------------------------------------------
+ENTRY_RE = re.compile(r"[ \t]*<file\b(?:[^>]*/>|[^>]*>.*?</file>)[ \t]*\n?", re.S)
+
+
+PLACER_SEED = 10
+
+
+def make_xise(text, base_files, local_files):
+    # map -bp packs CPU/audio flip-flops into spare block RAMs, which drops
+    # them from the FFS timing groups of ucf.extra; the Atari shell has room.
+    text, n = re.subn(r'(name="Map Slice Logic into Unused Block RAMs" xil_pn:value=")true(")',
+                      r'\1false\2', text)
+    if n != 1:
+        raise Fail("-bp property not found in sd2snes_base.xise")
+    # placer cost table (map -t / par -t): the base project's 31 misses 96 MHz
+    # by 0.5 ns with the Atari core; PLACER_SEED was found by a sweep.
+    text, n = re.subn(r'(name="Starting Placer Cost Table \(1-100\) (?:Map|Par)" xil_pn:value=")\d+(")',
+                      lambda mm: mm.group(1) + str(PLACER_SEED) + mm.group(2), text)
+    if n != 2:
+        raise Fail("placer cost table properties not found in sd2snes_base.xise")
+    m = re.search(r"(<files>[ \t]*\n)(.*?)(^[ \t]*</files>)", text, re.S | re.M)
+    if not m:
+        raise Fail("no <files> section in sd2snes_base.xise")
+    entries = ENTRY_RE.findall(m.group(2))
+    if not entries:
+        raise Fail("no <file> entries in sd2snes_base.xise")
+
+    def name_of(e):
+        mm = re.search(r'xil_pn:name="([^"]+)"', e)
+        return mm.group(1) if mm else ""
+
+    template = None
+    for e in entries:
+        if 'FILE_VERILOG' in e and "</file>" in e:
+            template = e
+            break
+    if template is None:
+        raise Fail("no paired Verilog <file> entry to use as a template")
+
+    def rename(e, new):
+        return re.sub(r'(xil_pn:name=")[^"]+(")', lambda mm: mm.group(1) + new + mm.group(2), e, count=1)
+
+    def seq(e, beh, impl):
+        e = re.sub(r'(name="BehavioralSimulation" xil_pn:seqID=")\d+(")',
+                   lambda mm: mm.group(1) + str(beh) + mm.group(2), e)
+        e = re.sub(r'(name="Implementation" xil_pn:seqID=")\d+(")',
+                   lambda mm: mm.group(1) + str(impl) + mm.group(2), e)
+        return e
+
+    out = []
+    allv = ["../sd2snes_base/" + f for f in base_files] + list(local_files)
+    for i, f in enumerate(allv):
+        out.append(seq(rename(template, f), i, i))
+
+    wanted = ["config.vh", "main.ucf", "ip/mk2/snescmd_buf.xco", "ip/mk2/snescmd_buf.xise"]
+    kept = []
+    for e in entries:
+        n = name_of(e)
+        if n == "config.vh":
+            out.append(e); kept.append(n)
+        elif n == "main.ucf":
+            out.append(rename(e, "../sd2snes_base/main.ucf")); kept.append(n)
+        elif n in wanted:
+            out.append(rename(e, "../sd2snes_base/" + n)); kept.append(n)
+    sys.stderr.write("xise: %d entries read from the base project: %s\n" %
+                     (len(entries), ", ".join(name_of(e) or "?" for e in entries)))
+    missing = [w for w in wanted if w not in kept]
+    if missing:
+        # not fatal: the XST process only needs the sources and the top module
+        sys.stderr.write("xise: WARNING, not found in the base .xise (left out): %s\n" % ", ".join(missing))
+    body = "".join(x if x.endswith("\n") else x + "\n" for x in out)
+    return text[:m.start(2)] + body + text[m.start(3):]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("root", help="sd2snes repository root (it is only read)")
+    ap.add_argument("--src", required=True, help="directory with the a26_*.v, m6507.v, ... files")
+    ap.add_argument("--dry-run", action="store_true", help="parse and check everything, write nothing")
+    ap.add_argument("--show-ports", action="store_true", help="print the parsed port lists and stop")
+    ap.add_argument("--only-xise", action="store_true",
+                    help="rewrite only sd2snes_atari.xise in an existing sd2snes_atari directory")
+    a = ap.parse_args()
+
+    root = pathlib.Path(a.root).resolve()
+    base = root / "verilog" / "sd2snes_base"
+    dest = root / "verilog" / "sd2snes_atari"
+    src = pathlib.Path(a.src).resolve()
+    try:
+        if not base.is_dir():
+            raise Fail("not found: %s" % base)
+        if a.only_xise:
+            if not dest.is_dir():
+                raise Fail("%s does not exist; run without --only-xise first" % dest)
+            for fn in KEEP:
+                if not (base / fn).is_file():
+                    raise Fail("not found in sd2snes_base: %s" % fn)
+            new_x = make_xise((base / "sd2snes_base.xise").read_text(), sorted(KEEP), LOCAL_FILES)
+            if a.dry_run:
+                print("dry run: .xise would list %d source files" % new_x.count("FILE_VERILOG"))
+                return 0
+            (dest / "sd2snes_atari.xise").write_text(new_x)
+            print("rewritten: %s" % (dest / "sd2snes_atari.xise"))
+            return 0
+        main_v = (base / "main.v").read_text()
+
+        stubs, rows = {}, []
+        for mod in REMOVE:
+            f = base / (mod + ".v")
+            if not f.is_file():
+                raise Fail("not found: %s" % f)
+            ports = parse_ports(f.read_text(), mod)
+            stubs[mod] = make_stub(mod, ports)
+            used = instance_ports(main_v, mod)
+            names = [p[2] for p in ports]
+            bad = [u for u in used if u not in names]
+            if bad:
+                raise Fail("main.v connects %s to ports that %s.v does not have: %s" % (mod, mod, bad))
+            rows.append((mod, ports, used))
+        if a.show_ports:
+            for mod, ports, used in rows:
+                print("== %s (%d ports, %d connected in main.v)" % (mod, len(ports), len(used)))
+                for d, r, n in ports:
+                    print("   %-6s %-10s %s%s" % (d, r, n, "" if n in used else "   [not connected]"))
+            return 0
+
+        new_main = replace_block(main_v, r"dac snes_dac\(", DAC_NEW)
+        new_main = replace_block(new_main, r"dma snes_dma \(", DMA_NEW)
+        if re.search(r"^dma\s+snes_dma\b", new_main, re.M) or re.search(r"^dac\s+snes_dac\b", new_main, re.M):
+            raise Fail("old instances still present after the edit")
+        for mod in ("a26_top", "a26_i2s"):
+            if len(re.findall(r"^%s\s+\w+\s*\(" % mod, new_main, re.M)) != 1:
+                raise Fail("expected exactly one %s instance in the new main.v" % mod)
+
+        for fn in A26_FILES:
+            if not (src / fn).is_file():
+                raise Fail("missing in --src: %s" % fn)
+        for fn in KEEP + ["config.vh", "sd2snes_base.xise", "main.ucf"]:
+            if not (base / fn).is_file():
+                raise Fail("not found in sd2snes_base: %s" % fn)
+
+        diff = "".join(difflib.unified_diff(
+            main_v.splitlines(True), new_main.splitlines(True),
+            "sd2snes_base/main.v", "sd2snes_atari/main.v"))
+
+        print("checks passed: %d stubs, 2 instances replaced, diff has %d changed lines" %
+              (len(stubs), sum(1 for l in diff.splitlines() if l[:1] in "+-" and l[:3] not in ("+++", "---"))))
+        if a.dry_run:
+            print("dry run: nothing written")
+            return 0
+
+        if dest.exists():
+            raise Fail("%s already exists; remove it first (this script never overwrites)" % dest)
+        dest.mkdir(parents=True)
+        (dest / "main.v").write_text(new_main)
+        (dest / "diff_main.txt").write_text(diff)
+        for mod, text in stubs.items():
+            (dest / ("stub_%s.v" % mod)).write_text(text)
+        for fn in A26_FILES:
+            shutil.copyfile(src / fn, dest / fn)
+        shutil.copyfile(base / "config.vh", dest / "config.vh")
+        (dest / "sd2snes_atari.xise").write_text(make_xise(
+            (base / "sd2snes_base.xise").read_text(), sorted(KEEP), LOCAL_FILES))
+        (dest / "ucf.extra").write_text(UCF_EXTRA)
+        (dest / "Makefile").write_text(MAKEFILE.format(
+            keep=" ".join(sorted(KEEP)),
+            a26=" ".join(A26_FILES),
+            stubs=" ".join("stub_%s.v" % m for m in REMOVE)))
+        print("written: %s" % dest)
+        return 0
+    except Fail as e:
+        print("ERROR: %s" % e, file=sys.stderr)
+        print("nothing was written.", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
