@@ -34,7 +34,7 @@ md5 `8b1ee64bd9cbc2c24517d902b3fdf788`. Ele continua no histórico do
 repositório:
 
 ```
-git show 203f9ca:sdcard/sd2snes/firmware.img > firmware.img
+git show 54b223e:sdcard/sd2snes/firmware.img > firmware.img
 ```
 
 Grave esse arquivo como `/sd2snes/firmware.img` e ligue o console. O
