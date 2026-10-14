@@ -4,13 +4,13 @@ Esta pasta espelha a raiz do cartão SD do sd2snes (Mk.II). Contém só o que o
 modo Atari acrescenta ou substitui; o resto da pasta `/sd2snes/` do cartão
 (menu, demais cores do FPGA) continua sendo o da instalação normal do sd2snes.
 
-Estado: **Passo 24** (bitstream versão `$06`, player v7).
+Estado: **Passo 25**: bitstream do Passo 24 (versão `$06`), player v7 e o firmware do Passo 25, que detecta o mapper FE.
 
 | Arquivo | Tamanho | md5 | O que é |
 |---|---|---|---|
 | `sd2snes/fpga_atari.bit` | 121293 | `473215f082acd657de7f586d61e5d214` | bitstream do core do Atari (Passo 24) |
 | `sd2snes/atari_snes.bin` | 32768 | `c89e847b9fab2aa53aade96387d4fbe2` | player SNES v7 (é o `atari_snes7.bin` das Releases, já com o nome que o firmware abre) |
-| `sd2snes/firmware.img` | 113079 | `8b1ee64bd9cbc2c24517d902b3fdf788` | firmware do Mk.II com o modo Atari (compilado em 2026-10-11) |
+| `sd2snes/firmware.img` | 113323 | `f9634a74371d24489c0727ded05604b3` | firmware do Mk.II com o modo Atari e a detecção do FE (Passo 25, compilado em 2026-10-14; na Release `v0.7-p25` se chama `firmware_p25.img`) |
 
 Os mesmos md5 estão em `MD5SUMS`.
 
@@ -27,14 +27,29 @@ Os mesmos md5 estão em `MD5SUMS`.
 5. Copie suas ROMs `.a26` para onde quiser no cartão. ROMs não são
    distribuídas com este projeto.
 
+## Voltar ao firmware anterior
+
+O firmware anterior (Passos 23 e 24, sem a detecção do FE) tem 113079 bytes e
+md5 `8b1ee64bd9cbc2c24517d902b3fdf788`. Ele continua no histórico do
+repositório:
+
+```
+git show 203f9ca:sdcard/sd2snes/firmware.img > firmware.img
+```
+
+Grave esse arquivo como `/sd2snes/firmware.img` e ligue o console. O
+bootloader regrava o flash sempre que a versão no cabeçalho do arquivo é
+diferente da gravada, e só grava se o CRC do arquivo conferir.
+
 ## Avisos
 
-- O bitstream do Passo 24 ainda não foi testado no console. O último testado é
-  o do Passo 23, na Release `v0.7-p23`.
+- Testado no console em 2026-10-14: com este conjunto, o Decathlon original
+  abre. Ainda sobram 2-3 pixels da bola, que é o item A do Passo 26. Robot Tank e
+  Thwocker também passam a FE, mas só foram testados em simulação.
 - O `firmware.img` é só para o Mk.II; o Mk.III não foi compilado com o modo
   Atari. Ele é uma cópia modificada do firmware do
   [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e
   como recompilar estão em `firmware/`.
-- Este firmware escolhe o mapper F8 para todo arquivo de 8 KB, então o
-  Decathlon (mapper FE) continua com tela preta. Ver `docs/PENDENCIAS.md`.
+- A detecção do FE segue o Stella (ver `firmware/LEIAME.md`). Os outros
+  arquivos de 8 KB continuam como F8.
 - ROMs com RAM Superchip não são recusadas, mas o core não a implementa.
