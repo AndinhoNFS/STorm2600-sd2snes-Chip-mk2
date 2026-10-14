@@ -130,8 +130,7 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   (3) a26_core.v, mapper 5 = FE (Activision, 8 KB): o ciclo seguinte a um acesso a $01FE traz no
       barramento o byte alto do destino do JSR / do retorno do RTS; D5 = 1 seleciona os primeiros
       4 KB, D5 = 0 os segundos; parte dos primeiros 4 KB (fe_arm, fe_bus). Igual ao MiSTer.
-      O firmware ainda escolhe F8 para todo arquivo de 8 KB: o Decathlon só roda quando o firmware
-      passar mapper 5 (reg 3 bits 3:1). O player v7 não foi conferido aqui.
+      O firmware do passo 25 passa o mapper 5 (ver abaixo); o player v7 o repassa sem mudança.
   Versão (reg 7) = 6. Formato do buffer, tabelas e registradores iguais.
   Testes novos: tb_tia.v (atraso de PF nas quatro fases de h % 4, atraso de GRP; falham no tia.v
   do passo 23) e tb_a26_top.v (run_fe). O tb_tia antigo passou sem espaçar escritas.
@@ -145,6 +144,24 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   tela congeladas; no core o original (mapper 5) e a conversão F6 ficam com a RAM igual.
   Não modelado e medido no Decathlon: RESBL 9 clocks depois de HMOVE na mesma linha sai 1 pixel
   à esquerda do ALE (HMOVE é aplicado de uma vez). Bits 5..0 das leituras do TIA continuam 0.
+  (Errata do Diagnóstico 4: o ALE só congelava por causa do alias pitfall.bin; com riverraid.bin
+  ele roda o Decathlon original como FE e serve de referência. Ver out/diag4.txt.)
+- Passo 25 (só firmware, ~/projetos/atari_fw; relatório atari_compare/out/passo25.txt): a26_decide()
+  em src/atari.c dá A26_BS_FE = 5 a um .a26 de 8 KB com uma das 5 assinaturas de
+  CartDetector::isProbablyFE do Stella e sem "STA $1FF9"/"STA $FFF9" duas vezes (o "!f8" do Stella),
+  depois das recusas 3F/UA e sem indício de Superchip; só com CONFIG_MK2 (A26_HAVE_FE em atari.h).
+  O resto não muda. O byte vai como antes para $7FF0 do player (magic $A2 em $7FF1); o player v7
+  escreve mapper*2|1 no reg 3. Coleção do usuário (5.317 .a26): 13 mudam de F8 para FE (Decathlon
+  x3, Robot Tank e 3 hacks, Thwocker x2 — com cópias do cartão), todos FE também no Stella.
+  Firmware novo: atari_fw/firmware_p25.img e atari_deploy/firmware_p25.img (md5 f9634a74…,
+  113323 B); o anterior (8b1ee64b…) em atari_fw/backup_antes_do_25/. Build: make CONFIG=config-mk2
+  CONFIG_CFGWARE=<arquivo de 11 bytes "placeholder"> (o fpga_mini.bit não existe na árvore; o
+  cfgware.h do build anterior tem esse conteúdo). Só os 4 bytes de versão do cabeçalho mudam entre
+  dois builds do mesmo fonte (hash do horário, genhdr sem -v).
+  Console (usuário, 2026-10-14, com o bit do passo 24 e o player v7): o Decathlon original abre com o
+  firmware_p25.img; sobram 2-3 pixels da bola (defeito A do Diagnóstico 4, item A do passo 26).
+  Robot Tank e Thwocker passam a FE mas NÃO foram testados no console (só simulação).
+  Repositório: firmware/mk2_atari.patch (5 arquivos contra 1b5d9d79) e sdcard/sd2snes/firmware.img.
 - Três buffers com trava: R0 = bits 1:0 = N (buffer com o quadro completo mais recente), os
   demais bits 0. Reg 7 de escrita = trava (bit 7 válida, bits 1:0 = buffer). Ao fim do quadro
   N = W; o novo W só é escolhido na primeira linha gravada do quadro seguinte: diferente de N
@@ -187,7 +204,8 @@ Fontes anteriores ao passo 20 em bak_v8/, ao passo 21b em bak_v9/, ao passo 22 e
 ao passo 23 em bak_v11/ (com o bit do 22), ao passo 24 em bak_v12/ (com o bit do 23) e em bak_v13_pre/ (os mesmos
 fontes, sem o bit). bak_v12_pre/ = os fontes do passo 23 antes da síntese dele.
 O bit do passo 23 foi testado em hardware pelo usuário (H.E.R.O., Seaquest, Decathlon: Diagnóstico 3).
-O bit do passo 24 não foi testado em hardware aqui.
+O bit do passo 24 e o firmware do passo 25 foram usados no console pelo usuário em 2026-10-14: Decathlon
+original abre (2-3 pixels da bola sobram); barras POWER do H.E.R.O. e OXYGEN do Seaquest aparecem.
 Pendente: player 65816 no SNES (para o layout com dicionário), firmware ARM (.a26, mapper, bitstream), validação com jogos
 reais, opcodes não documentados.
 

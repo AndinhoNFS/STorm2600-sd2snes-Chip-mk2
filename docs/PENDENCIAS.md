@@ -2,26 +2,32 @@
 
 ## Bugs abertos
 
-- **Decathlon (e outros FE da Activision)**: tela preta no console. O core
-  já tem o mapper FE (valor 5), mas o firmware escolhe F8 para todo arquivo
-  de 8 KB. Falta o firmware detectar FE e passar 5. O player v7 já repassa o
-  valor: lê `$FFF0`, faz `mapper*2 | 1` e escreve no registrador 3 (conferido
-  no fonte, `snes/atari_snes7.s`).
-- **Decathlon**: a bola sai 1 pixel à esquerda do emulador numa linha em que o
-  jogo faz RESBL logo depois de HMOVE (8 pixels por quadro, só em simulação).
+- **Bola (Decathlon, Crackpots)**: quando o jogo faz RESBL logo depois de
+  HMOVE, ainda no apagamento, a bola sai 1 pixel à esquerda do emulador. No
+  HMOVE seguinte ela aparece na última coluna da direita. No console sobram 2-3
+  pixels no Decathlon. Em simulação são 8 pixels por quadro no Decathlon e uma
+  linha na coluna 159 do Crackpots. Item A do Passo 26.
+- **Checkers**: as casas azuis do tabuleiro somem, porque o jogo troca a cor
+  de fundo depois do pixel 16, onde o core lê as 4 cores da linha. Item B do
+  Passo 26.
 - **Leituras do TIA**: os bits 5..0 voltam 0 em vez do último valor do
   barramento.
 
-## A confirmar no console (Passo 24)
+## A confirmar no console (Passo 24/25)
 
-Corrigidos em simulação contra o emulador; o bitstream do Passo 24 ainda não
-foi testado em hardware.
+Corrigidos em simulação contra o emulador. Em 2026-10-14 o bitstream do Passo 24
+foi usado no console: o Decathlon abre (com o firmware do Passo 25), e as barras
+POWER do H.E.R.O. e OXYGEN do Seaquest aparecem.
 
 - **H.E.R.O.**: dois pixels perdidos apareciam em outro ponto da mesma tela, em
   várias telas, e tocar neles matava o herói. Em simulação os pixels somem
   (340 → 0 em 85 quadros). A morte do herói não foi reproduzida em simulação,
   então só o teste no console confirma essa parte.
 - **Seaquest**: lacuna de pixels na barra de oxigênio (20 → 0).
+- **Robot Tank e Thwocker**: passam a mapper FE com o firmware do Passo 25;
+  rodam em simulação, mas não foram testados no console. Em simulação, o Robot
+  Tank ainda difere do emulador em ~266 pixels por quadro, por causa do TIA e
+  não do mapper.
 
 ## Melhorias possíveis
 
@@ -30,6 +36,11 @@ foi testado em hardware.
 - Deslocamento salvo por ROM.
 - Folga de timing: 0,024 ns no Passo 24, depois de 12 sementes. O caminho do
   TIA até o gravador de vídeo está no limite.
+
+## Corrigidos no Passo 25
+
+- Firmware detecta o mapper FE (critério do Stella) e passa 5 ao player: o
+  Decathlon original abre no console.
 
 ## Corrigidos no Passo 24
 

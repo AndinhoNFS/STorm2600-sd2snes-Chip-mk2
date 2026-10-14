@@ -16,12 +16,14 @@ Projetos de base:
 |---|---|
 | Player SNES | v7 (`atari_snes7.bin`) |
 | Bitstream FPGA | Passo 24 (`fpga_atari.bit`), versão `$06` em `$2027` |
+| Firmware | Passo 25 (`firmware.img`, detecta o mapper FE) |
 | Uso do FPGA | 5003/7168 LUTs, 2875/3584 slices, 16/16 BRAM, folga +0,024 ns |
 
 Testado no console com o bitstream do Passo 23 (Release `v0.7-p23`): Pitfall,
-River Raid, Pac‑Man, Enduro, Frostbite e Boxing corretos. O bitstream do
-Passo 24 (Release `v0.7-p24`) corrige H.E.R.O. e Seaquest em simulação e ainda
-não foi testado no console. Bugs conhecidos em
+River Raid, Pac‑Man, Enduro, Frostbite e Boxing corretos. Com o bitstream do
+Passo 24 e o firmware do Passo 25 (Release `v0.7-p25`), o Decathlon original
+abre no console, com 2-3 pixels da bola ainda fora do lugar. Robot Tank e
+Thwocker, também FE, só foram testados em simulação. Bugs conhecidos em
 [docs/PENDENCIAS.md](docs/PENDENCIAS.md).
 
 ## Como funciona (resumo)

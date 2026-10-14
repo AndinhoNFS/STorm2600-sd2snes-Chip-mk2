@@ -1,18 +1,23 @@
-Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13)
+Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13;
+firmware do passo 25 em 2026-10-14)
 
 NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
-no repositorio, menos os tres que vao para o cartao: eles estao em sdcard/sd2snes/ (ver sdcard/LEIAME.md)
-e o fpga_atari.bit e o atari_snes7.bin tambem na pagina de Releases.
+no repositorio, menos os tres que vao para o cartao: eles estao em sdcard/sd2snes/ (ver sdcard/LEIAME.md;
+o firmware_p25.img e' o sdcard/sd2snes/firmware.img) e tambem na pagina de Releases.
 
 No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (este fpga_atari.bit)
-ainda NAO foi gravado nem testado em hardware.
+foi gravado depois; em 2026-10-14 o usuario testou no console o bit do passo 24 com o firmware do passo 25
+(firmware_p25.img): o Decathlon original abre, sobram 2-3 pixels da bola.  Robot Tank e Thwocker (tambem FE)
+NAO foram testados no console, so' em simulacao.
 
 Arquivo          Tamanho   MD5                               Destino no cartao
 ---------------  --------  --------------------------------  --------------------------
 fpga_atari.bit    121293   473215f082acd657de7f586d61e5d214  /sd2snes/fpga_atari.bit
 atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7; gravar COM ESTE NOME no cartao)
 atari_snes.bin     32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o player v3, so' serve ate' o bit v7)
-firmware.img      113079   8b1ee64bd9cbc2c24517d902b3fdf788  /sd2snes/firmware.img
+firmware_p25.img  113323   f9634a74371d24489c0727ded05604b3  /sd2snes/firmware.img  (passo 25: detecta FE; gravar COM O NOME
+                                                             firmware.img no cartao, depois de guardar o atual)
+firmware.img      113079   8b1ee64bd9cbc2c24517d902b3fdf788  (o do cartao ate' o passo 24; e' a volta atras do passo 25)
 fpga_atari_v1.bit  99085   323a40a82b5e415c2ca2a893492a6bea  (nao vai para o cartao: versao anterior)
 fpga_atari_v2.bit  98870   ed3bc075db1e18c6e85c5e529cf3f31b  (nao vai para o cartao: versao anterior)
 fpga_atari_v3.bit 106050   a249a86b9087a4e75adbd2742205e84e  (nao vai para o cartao: versao anterior)
@@ -153,7 +158,18 @@ Origem
 - atari_snes_v2.bin : player v2 de teste (atari_snes2.s), 5 linhas de diagnostico em
                    hexadecimal, sem video do Atari.
 - atari_snes_v1.bin : o player anterior (atari_snes.s), que so mostra as linhas 1 a 3.
-- firmware.img   : ~/projetos/atari_fw/src/obj-mk2/ (copia do firmware com o patch
+- firmware_p25.img : ~/projetos/atari_fw/firmware_p25.img (build de 2026-10-14, mesma arvore e mesma
+                   toolchain do firmware.img: arm-none-eabi-gcc 13.2.1, CONFIG=config-mk2).
+                   PASSO 25: um .a26 de 8 KB com uma das assinaturas FE do Stella
+                   (CartDetector::isProbablyFE) e sem "STA $1FF9"/"STA $FFF9" repetido passa
+                   o mapper 5 (FE) ao player em $FFF0; todo o resto escolhe o mesmo de antes.
+                   Na colecao do usuario (5.317 .a26) mudam so' 13 arquivos: Decathlon (USA,
+                   Europe, France), Robot Tank e 3 hacks dele, Thwocker (com as copias do
+                   cartao).  O Space Shuttle desta colecao continua F8 (o Stella tambem da' F8).
+                   Precisa do bit do passo 24 (o unico com mapper 5) e do player v7 (sem
+                   mudanca).  Com o bit do passo 23 o Decathlon original continua sem rodar.
+                   Relatorio: ~/projetos/atari_compare/out/passo25.txt.
+- firmware.img   : ~/projetos/atari_fw/backup_antes_do_25/firmware.img (copia do firmware com o patch
                    do Mk.II; base 1b5d9d79, CONFIG=config-mk2, arm-none-eabi-gcc 13.2.1).
                    Para um .a26 a mascara de ROM passa a ser de 4 MB: $70:8000-$FFFF
                    enxerga PSRAM 0x380000-0x387FFF; o player segue em $00:8000 e os
@@ -164,8 +180,10 @@ Origem
 - firmware_v1.img : sem a mascara de 4 MB.
 
 Atencao
-- O firmware.img SUBSTITUI o firmware do cartao (o atual tem 113049 bytes). Guarde
-  uma copia do firmware.img atual antes de trocar.
+- O firmware SUBSTITUI o do cartao. Guarde uma copia do /sd2snes/firmware.img atual antes de
+  trocar (hoje: 113079 bytes, md5 8b1ee64bd9cbc2c24517d902b3fdf788).  Para voltar atras, grave de
+  novo esse arquivo como /sd2snes/firmware.img: o bootloader regrava o flash sempre que a versao
+  do cabecalho do arquivo difere da gravada (ver passo25.txt).
 - O md5 do firmware.img muda a cada compilacao, mesmo com o mesmo fonte; o valor
   acima vale so para este arquivo.
 - Limitacoes conhecidas: ROMs com RAM Superchip nao sao recusadas (o core nao a

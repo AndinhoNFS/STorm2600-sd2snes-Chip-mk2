@@ -41,8 +41,9 @@ cores finais por linha (medido nos 6 jogos de teste).
 Valor em `$2023` bits 3:1, com a numeração do MiSTer; ver o cabeçalho de
 `fpga/a26_core.v`. Passo 24: 5 = FE (Activision 8 KB, Decathlon). No ciclo
 seguinte a um acesso a `$01FE`, o bit 5 do barramento de dados escolhe o
-banco (1 = primeiros 4 KB, 0 = segundos). O firmware ainda escolhe F8 para
-todo arquivo de 8 KB, então o FE só entra em uso quando ele passar o valor 5.
+banco (1 = primeiros 4 KB, 0 = segundos). Desde o Passo 25 o firmware passa 5
+para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
+`firmware/LEIAME.md`).
 
 ## Player SNES
 
