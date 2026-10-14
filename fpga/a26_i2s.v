@@ -1,7 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-2.0-only
 //
 // a26_i2s.v -- minimal DAC serializer with the pin timing of sd2snes_base/dac.v
 //              (no sample buffer, no CIC filter, no volume ramp).  Milestone 7b.
+//
+// ORIGIN: the clocking part of this file (the MCLK/LRCK/SCLK shift registers and the
+// sample shift register, about 15 lines) is copied from verilog/sd2snes_base/dac.v of
+// the sd2snes project (Maximilian Rehkopf and contributors, https://github.com/ludufre/sd2snes,
+// commit 1b5d9d79), which is licensed under the GNU GPL version 2; so is this file.
 //
 // Clocking, copied from dac.v and valid for clkin = 96 MHz:
 //   MCLK = clkin/8 (12 MHz), LRCK = MCLK/64 (187.5 kHz), SCLK = LRCK*32.

@@ -19,12 +19,17 @@ Projetos de base:
 | Firmware | Passo 25 (`firmware.img`, detecta o mapper FE) |
 | Uso do FPGA | 5003/7168 LUTs, 2875/3584 slices, 16/16 BRAM, folga +0,024 ns |
 
-Testado no console com o bitstream do Passo 23 (Release `v0.7-p23`): Pitfall,
-River Raid, Pac‑Man, Enduro, Frostbite e Boxing corretos. Com o bitstream do
-Passo 24 e o firmware do Passo 25 (Release `v0.7-p25`), o Decathlon original
-abre no console, com 2-3 pixels da bola ainda fora do lugar. Robot Tank e
-Thwocker, também FE, só foram testados em simulação. Bugs conhecidos em
-[docs/PENDENCIAS.md](docs/PENDENCIAS.md).
+No console (relato do usuário), com o bitstream do Passo 23 (Release
+`v0.7-p23`): Pitfall, River Raid, Pac‑Man, Enduro, Frostbite e Boxing corretos.
+
+No console, com o bitstream do Passo 24 e o firmware do Passo 25 (Release
+`v0.7-p25`), o Decathlon original abre, com 2-3 pixels da bola fora do lugar.
+Esses pixels e a linha vertical do Crackpots foram corrigidos pelo bitstream do
+Passo 26 (md5 `7d19e73ad27b7a03e51e2fe0947b663a`, versão `$07`), confirmado no
+console. Esse bitstream ainda não está neste repositório.
+
+Robot Tank e Thwocker, também FE, só foram testados em simulação. Bugs
+conhecidos em [docs/PENDENCIAS.md](docs/PENDENCIAS.md).
 
 ## Como funciona (resumo)
 
@@ -65,8 +70,11 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 
 ## Origem do código
 
-- Todo o Verilog em `fpga/` foi escrito do zero para este projeto
-  (GPL-2.0-or-later). Nenhum arquivo do sd2snes ou do MiSTer é copiado aqui.
+- O Verilog em `fpga/` foi escrito para este projeto (GPL-2.0-or-later), com
+  uma exceção: `fpga/a26_i2s.v` tem cerca de 15 linhas (o clocking do DAC)
+  copiadas do `verilog/sd2snes_base/dac.v` do sd2snes (Maximilian Rehkopf e
+  colaboradores, GPL-2.0), creditadas no cabeçalho do arquivo, que por isso é
+  GPL-2.0-only. Nada do MiSTer é copiado.
 - O projeto ISE é gerado por `fpga/make_atari_shell.py` a partir de uma árvore
   intacta do [sd2snes](https://github.com/ludufre/sd2snes) (GPL-2.0): o `main.v`,
   o `.ucf` e o `.xise` gerados derivam dos originais e não são versionados.
@@ -84,6 +92,29 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
   restante do FPGA do sd2snes (`verilog/sd2snes_base` do mesmo commit).
 - O player (`sdcard/sd2snes/atari_snes.bin`) é montado a partir de `snes/`,
   escrito do zero; o binário reproduz byte a byte (ver `snes/LEIAME.md`).
+- Fonte correspondente (GPL): a fonte completa do `firmware.img` e do
+  `fpga_atari.bit` é o commit `1b5d9d79` de
+  [ludufre/sd2snes](https://github.com/ludufre/sd2snes) mais as pastas
+  [`firmware/`](firmware/) e [`fpga/`](fpga/) deste repositório.
+
+## Aviso
+
+Este projeto é distribuído **sem nenhuma garantia** (ver a [LICENSE](LICENSE)).
+Use por sua conta e risco.
+
+- O `firmware.img` é só para o **sd2snes Mk.II**. Ele regrava o firmware do
+  cartão, não só o modo Atari. Antes de instalar, guarde o `/sd2snes/firmware.img`
+  que está no cartão. O firmware anterior deste projeto (md5
+  `8b1ee64bd9cbc2c24517d902b3fdf788`) sai com
+  `git show 54b223e:sdcard/sd2snes/firmware.img > firmware.img`.
+- Para voltar atrás, grave o firmware guardado como `/sd2snes/firmware.img` e
+  ligue o console. Se o cartão não iniciar, o bootloader do sd2snes, que não é
+  regravado, continua rodando a cada partida: ele lê o `/sd2snes/firmware.img` e
+  regrava o flash quando a versão do arquivo é diferente da gravada e o CRC
+  confere. Basta pôr um `firmware.img` válido (o guardado) no cartão e ligar.
+  Detalhes em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
+- Projeto independente, não afiliado à Atari nem aos autores do sd2snes e do
+  MiSTer. Não inclui ROMs.
 
 ## Instalação no cartão
 

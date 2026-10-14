@@ -14,6 +14,24 @@ Estado: **Passo 25**: bitstream do Passo 24 (versão `$06`), player v7 e o firmw
 
 Os mesmos md5 estão em `MD5SUMS`.
 
+## Aviso
+
+Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
+
+- O `firmware.img` é **só para o sd2snes Mk.II** e regrava o firmware do
+  cartão, não só o modo Atari.
+- Antes de instalar, guarde o `/sd2snes/firmware.img` que está no cartão. O
+  firmware anterior deste projeto tem md5 `8b1ee64bd9cbc2c24517d902b3fdf788` e
+  sai com `git show 54b223e:sdcard/sd2snes/firmware.img > firmware.img` (ver
+  "Voltar ao firmware anterior").
+- Se o cartão não iniciar depois da troca: o bootloader do sd2snes não é
+  regravado e roda a cada partida. Ele lê o `/sd2snes/firmware.img` e regrava o
+  flash quando a versão do arquivo é diferente da gravada e o CRC confere; um
+  arquivo corrompido não é gravado. Ponha no cartão um `firmware.img` válido (o
+  que você guardou) e ligue o console.
+- Projeto independente, não afiliado à Atari nem aos autores do sd2snes e do
+  MiSTer. Não inclui ROMs.
+
 ## Instalação
 
 1. **Guarde uma cópia do `/sd2snes/firmware.img` que está hoje no cartão.** O
@@ -43,9 +61,11 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 
 ## Avisos
 
-- Testado no console em 2026-10-14: com este conjunto, o Decathlon original
-  abre. Ainda sobram 2-3 pixels da bola, que é o item A do Passo 26. Robot Tank e
-  Thwocker também passam a FE, mas só foram testados em simulação.
+- No console, em 2026-10-14: com este conjunto o Decathlon original abre, com
+  2-3 pixels da bola fora do lugar. Eles foram corrigidos pelo bitstream do
+  Passo 26 (md5 `7d19e73ad27b7a03e51e2fe0947b663a`, versão `$07`), confirmado no
+  console, que ainda não está nesta pasta. Robot Tank e Thwocker também passam a
+  FE, mas só foram testados em simulação.
 - O `firmware.img` é só para o Mk.II; o Mk.III não foi compilado com o modo
   Atari. Ele é uma cópia modificada do firmware do
   [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e

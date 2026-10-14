@@ -205,7 +205,8 @@ ao passo 23 em bak_v11/ (com o bit do 22), ao passo 24 em bak_v12/ (com o bit do
 fontes, sem o bit). bak_v12_pre/ = os fontes do passo 23 antes da síntese dele.
 O bit do passo 23 foi testado em hardware pelo usuário (H.E.R.O., Seaquest, Decathlon: Diagnóstico 3).
 O bit do passo 24 e o firmware do passo 25 foram usados no console pelo usuário em 2026-10-14: Decathlon
-original abre (2-3 pixels da bola sobram); barras POWER do H.E.R.O. e OXYGEN do Seaquest aparecem.
+original abre (2-3 pixels da bola sobram); barras POWER (H.E.R.O.) e OXYGEN (Seaquest): o efeito da barra
+existe (a parte vermelha, gasta, aparece e encolhe), mas a cor da parte que resta (amarela/branca) não aparece.
 Pendente: player 65816 no SNES (para o layout com dicionário), firmware ARM (.a26, mapper, bitstream), validação com jogos
 reais, opcodes não documentados.
 

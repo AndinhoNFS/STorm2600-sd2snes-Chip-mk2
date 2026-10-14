@@ -1,7 +1,10 @@
 # fpga/: core do Atari 2600
 
-Verilog escrito do zero para este projeto (GPL-2.0-or-later, ver o cabeçalho
-SPDX de cada arquivo). Não há código copiado do sd2snes nem do MiSTer aqui.
+Verilog escrito para este projeto (GPL-2.0-or-later, ver o cabeçalho SPDX de
+cada arquivo). Exceção: o `a26_i2s.v` tem cerca de 15 linhas (o clocking do DAC)
+copiadas do `verilog/sd2snes_base/dac.v` do sd2snes (Maximilian Rehkopf e
+colaboradores, GPL-2.0), creditadas no cabeçalho, e por isso é GPL-2.0-only.
+Nada do MiSTer é copiado.
 
 | Arquivo | Conteúdo |
 |---|---|
