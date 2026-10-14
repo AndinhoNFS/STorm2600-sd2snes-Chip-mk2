@@ -119,11 +119,20 @@ Use por sua conta e risco.
 
 ## Instalação no cartão
 
-Copie o conteúdo de [`sdcard/`](sdcard/) para a raiz do cartão, mesclando com a
-pasta `/sd2snes/` que já existe. São três arquivos: `fpga_atari.bit`,
-`atari_snes.bin` (o player v7) e `firmware.img`. O `firmware.img` substitui o
-firmware do cartão: guarde uma cópia do atual antes. O passo a passo e os md5
-estão em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
+Só para o sd2snes **Mk.II**. Antes, guarde o `/sd2snes/firmware.img` que está no
+cartão (ver Aviso acima).
+
+1. Baixe a release [v1.11.2-br-v2.16.4 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.16.4)
+   (`sd2snes_firmware_v1.11.2-br-2.16.4.zip`) e copie a pasta `sd2snes` dela para
+   a raiz do cartão.
+2. Copie os 3 arquivos de [`sdcard/sd2snes/`](sdcard/sd2snes/) deste repositório
+   (`fpga_atari.bit`, `atari_snes.bin` e `firmware.img`) para a pasta `sd2snes`
+   do cartão, substituindo o `firmware.img`.
+3. Ponha as ROMs em qualquer pasta do cartão e ligue o console.
+
+Testado apenas com o firmware do Passo 25 (feito do commit `1b5d9d79` do
+ludufre/sd2snes) junto com a release v1.11.2-br-v2.16.4. Com a base 2.17 não
+foi testado. Os md5 e como voltar atrás estão em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
 
 O bitstream e o player de cada versão também ficam na página de Releases (lá o
 player se chama `atari_snes7.bin`; no cartão, `atari_snes.bin`). ROMs de Atari não são distribuídas com este projeto.

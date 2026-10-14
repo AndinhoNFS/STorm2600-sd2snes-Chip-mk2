@@ -1,8 +1,8 @@
 # sdcard/: arquivos do cartão para o modo Atari
 
-Esta pasta espelha a raiz do cartão SD do sd2snes (Mk.II). Contém só o que o
-modo Atari acrescenta ou substitui; o resto da pasta `/sd2snes/` do cartão
-(menu, demais cores do FPGA) continua sendo o da instalação normal do sd2snes.
+Esta pasta tem só os 3 arquivos que o modo Atari acrescenta ou substitui na pasta
+`/sd2snes/` do cartão do sd2snes (Mk.II). O resto da pasta (menu, demais cores
+do FPGA) vem da release do sd2snes (passo 1 da Instalação).
 
 Estado: **Passo 26**: bitstream do Passo 26 (versão `$07`), player v7 e o firmware do Passo 25, que detecta o mapper FE.
 
@@ -34,16 +34,22 @@ Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
 
 ## Instalação
 
-1. **Guarde uma cópia do `/sd2snes/firmware.img` que está hoje no cartão.** O
+0. **Guarde uma cópia do `/sd2snes/firmware.img` que está hoje no cartão.** O
    daqui substitui o firmware do cartão inteiro, não só o modo Atari.
-2. Confira os arquivos: dentro de `sdcard/`, rode `md5sum -c MD5SUMS`.
-3. Copie o conteúdo de `sdcard/` para a raiz do cartão, mesclando com a pasta
-   `/sd2snes/` que já existe (não apague a pasta do cartão). `LEIAME.md` e
-   `MD5SUMS` não precisam ir.
-4. Coloque o cartão e ligue o console. O bootloader grava o `firmware.img` na
+1. Baixe a release [v1.11.2-br-v2.16.4 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.16.4)
+   (`sd2snes_firmware_v1.11.2-br-2.16.4.zip`) e copie a pasta `sd2snes` dela
+   para a raiz do cartão.
+2. Copie os 3 arquivos desta pasta `sd2snes/` (`fpga_atari.bit`,
+   `atari_snes.bin`, `firmware.img`) para a pasta `sd2snes` do cartão,
+   substituindo o `firmware.img`. Antes, se quiser, confira os md5: dentro de
+   `sdcard/`, `md5sum -c MD5SUMS`.
+3. Ponha as ROMs `.a26` em qualquer pasta do cartão (não são distribuídas com
+   este projeto). Ligue o console: o bootloader grava o `firmware.img` na
    primeira partida.
-5. Copie suas ROMs `.a26` para onde quiser no cartão. ROMs não são
-   distribuídas com este projeto.
+
+**Testado apenas** com o firmware do Passo 25 (feito do commit `1b5d9d79` do
+ludufre/sd2snes) junto com a release v1.11.2-br-v2.16.4. Com a base 2.17 não
+foi testado.
 
 ## Voltar ao bitstream anterior
 
