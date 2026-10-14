@@ -151,7 +151,7 @@ module a26_regs (
         4'd4: data_out_r <= 8'h41;             // 'A'
         4'd5: data_out_r <= 8'h32;             // '2'
         4'd6: data_out_r <= 8'h36;             // '6'
-        4'd7: data_out_r <= 8'h06;             // version
+        4'd7: data_out_r <= 8'h07;             // version
         4'd8: data_out_r <= miss_cnt;
         4'd9: data_out_r <= lat_max;
         4'd10: data_out_r <= {r_yofs[6], r_yofs};

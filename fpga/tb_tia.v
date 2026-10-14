@@ -291,6 +291,24 @@ module tb_tia;
     wait_h(8'd20); wait_h(8'd10);
     expect_range("hmove right", 2'd2, 37, 44);
 
+    // ================= RESBL after HMOVE in the same HBLANK (Passo 26) ==
+    // Crackpots / Decathlon: HMOVE on clock 8, RESBL on clock 17.  Without HMOVE a RESBL in
+    // HBLANK puts the ball on pixel 2; after one it is pixel 3 (as the ALE / Stella).
+    wait_h(8'd10);
+    clear_all;
+    tia_wr(6'h1F, 8'h02);                         // ENABL, ball width 1, HMBL = 0
+    wait_h(8'd2); tia_wr_at(8'd14, 6'h14, 8'h00); // RESBL in HBLANK, no HMOVE
+    wait_h(8'd20); wait_h(8'd10);
+    expect_range("resbl hblank", 2'd1, 2, 2);
+    expect_nz("resbl hblank count", 1);
+    wait_h(8'd2); tia_wr_at(8'd5, 6'h2A, 8'h00);  // HMOVE (HMBL = 0: no motion) ...
+    tia_wr_at(8'd14, 6'h14, 8'h00);               // ... and RESBL 9 clocks later
+    wait_h(8'd20); wait_h(8'd10);                 // the HMOVE line: pixels 0..7 blanked
+    wait_h(8'd20); wait_h(8'd10);                 // the next line
+    expect_range("resbl after hmove", 2'd1, 3, 3);
+    expect_nz("resbl after hmove count", 1);
+    tia_wr(6'h1F, 8'h00);
+
     // ================= missile + ball, priority ======================
     wait_h(8'd10);
     clear_all;

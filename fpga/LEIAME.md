@@ -16,6 +16,7 @@ Nada do MiSTer é copiado.
 | `make_atari_shell.py` | gera o projeto ISE (ver abaixo) |
 | `ports.txt` | portas dos módulos do sd2snes que viram stub |
 | `scripts/sweep_sementes.sh` | varredura de sementes de placement usada na síntese |
+| `experimental/p26B/` | alocação das 4 cores por linha: funciona em simulação, não fecha o timing, **fora do bitstream** |
 
 ## Projeto ISE
 

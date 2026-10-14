@@ -1,18 +1,21 @@
 Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13;
-firmware do passo 25 em 2026-10-14)
+firmware do passo 25 e bit do passo 26 em 2026-10-14)
 
 NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
 no repositorio, menos os tres que vao para o cartao: eles estao em sdcard/sd2snes/ (ver sdcard/LEIAME.md;
 o firmware_p25.img e' o sdcard/sd2snes/firmware.img) e tambem na pagina de Releases.
 
-No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (este fpga_atari.bit)
+No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (fpga_atari_v13.bit)
 foi gravado depois; em 2026-10-14 o usuario testou no console o bit do passo 24 com o firmware do passo 25
 (firmware_p25.img): o Decathlon original abre, sobram 2-3 pixels da bola.  Robot Tank e Thwocker (tambem FE)
 NAO foram testados no console, so' em simulacao.
+O bit do passo 26 (este fpga_atari.bit, versao $07) foi testado no console pelo usuario em 2026-10-14:
+Crackpots e Decathlon OK (a bola).  Checkers, H.E.R.O. e Seaquest continuam com a limitacao de cor do passo 24.
 
 Arquivo          Tamanho   MD5                               Destino no cartao
 ---------------  --------  --------------------------------  --------------------------
-fpga_atari.bit    121293   473215f082acd657de7f586d61e5d214  /sd2snes/fpga_atari.bit
+fpga_atari.bit    120807   7d19e73ad27b7a03e51e2fe0947b663a  /sd2snes/fpga_atari.bit  (passo 26, versao $07)
+fpga_atari_v13.bit 121293  473215f082acd657de7f586d61e5d214  (nao vai para o cartao: o bit do passo 24, volta atras)
 atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7; gravar COM ESTE NOME no cartao)
 atari_snes.bin     32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o player v3, so' serve ate' o bit v7)
 firmware_p25.img  113323   f9634a74371d24489c0727ded05604b3  /sd2snes/firmware.img  (passo 25: detecta FE; gravar COM O NOME
@@ -40,11 +43,25 @@ atari_snes_v3h.bin 32768   ddda5baf48b5586a34d023e10dfead27  (copia do atari_sne
                                                               o conteudo e' o v3, nao o 3h)
 
 Origem
-- fpga_atari.bit : VM (storm-ise147), ~/pristine/verilog/sd2snes_atari/fpga_atari.bit.
+- fpga_atari.bit : VM (storm-ise147), ~/pristine/verilog/sd2snes_atari/fpga_atari_v14.bit.
+                   E' o main.bit (md5 65e255cc360ef326dc6843b76becc88f) comprimido com
+                   utils/rle. Build de 2026-10-14 com semente de placement 7, -bp desligado,
+                   o clock de 96 MHz fecha por +0,065 ns, 0 erros, 4965 LUTs, 2897 slices,
+                   2235 FFs, 16 de 16 BRAMs.  Testado no console em 2026-10-14 (Crackpots, Decathlon).
+                   (sementes 17, 10 e 6 nao fecharam: -0,168 / -0,226 / -0,517 ns)
+                   PASSO 26, so' no core (relatorio ~/projetos/atari_compare/out/passo26.txt):
+                     - BOLA: RESBL no HBLANK depois de um HMOVE na mesma linha poe a bola no
+                       pixel 3 (antes 2), como no ALE.  Some a linha da coluna 159 do Crackpots
+                       e os pixels da bola do Decathlon (0 pixels x ALE em simulacao).
+                     - versao em $2027 (leitura) = $07.  Buffer, tabelas e registradores iguais:
+                       o player v7 e o firmware do passo 25 servem sem mudanca.
+                     - a alocacao das 4 cores por linha (Checkers) NAO entrou: nao fecha o timing
+                       (-1,5 a -2,6 ns); guardada no repositorio em fpga/experimental/p26B/.
+- fpga_atari_v13.bit : o bit do passo 24 (o que estava no cartao).  VM, fpga_atari_v13.bit.
                    E' o main.bit (md5 8c96f945c0c50d2401c6d67940c35ab8) comprimido com
                    utils/rle. Build de 2026-10-13 com semente de placement 17, -bp desligado,
                    o clock de 96 MHz fecha por +0,024 ns, 0 erros, 5003 LUTs, 2875 slices,
-                   2260 FFs, 16 de 16 BRAMs.  Nao foi testado em hardware.
+                   2260 FFs, 16 de 16 BRAMs.  Testado no console em 2026-10-14 (Decathlon).
                    (11 sementes nao fecharam: 10, 6..9, 11..16; a melhor delas -0,016 ns)
                    PASSO 24, so' no core (Diagnostico 3):
                      - PLAYFIELD: uma escrita em PF0/PF1/PF2 so' vale no inicio da proxima celula

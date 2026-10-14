@@ -421,7 +421,9 @@ module tia (
           6'h11: pos_p1 <= (hs < 8'd68) ? 8'd3 : rpos(hs, 3'd5);     // RESP1
           6'h12: pos_m0 <= (hs < 8'd68) ? 8'd2 : rpos(hs, 3'd4);     // RESM0
           6'h13: pos_m1 <= (hs < 8'd68) ? 8'd2 : rpos(hs, 3'd4);     // RESM1
-          6'h14: pos_bl <= (hs < 8'd68) ? 8'd2 : rpos(hs, 3'd4);     // RESBL
+          // RESBL in the horizontal blank: position 2, or 3 when HMOVE was strobed earlier in this
+          // blank (as the ALE / Stella; Crackpots and Decathlon do RESBL 9 clocks after HMOVE)
+          6'h14: pos_bl <= (hs < 8'd68) ? (hmove_blank ? 8'd3 : 8'd2) : rpos(hs, 3'd4);     // RESBL
           6'h15: r_audc0 <= din[3:0];
           6'h16: r_audc1 <= din[3:0];
           6'h17: r_audf0 <= din[4:0];

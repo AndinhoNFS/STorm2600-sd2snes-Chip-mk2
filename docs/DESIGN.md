@@ -1,4 +1,4 @@
-# Design: player SNES v7 + bitstream Passo 24
+# Design: player SNES v7 + bitstream Passo 26
 
 ## Quadro na PSRAM
 
@@ -35,6 +35,8 @@ cores finais por linha (medido nos 6 jogos de teste).
   escrita chega). Há um pendente por registrador.
 - GRP0/GRP1: valem 1 pixel depois.
 - As demais escritas continuam valendo no clock de cor seguinte.
+- RESBL (Passo 26): dado no apagamento horizontal, põe a bola na posição 2, ou
+  na 3 se já houve HMOVE nesse mesmo apagamento (como no Stella/ALE).
 
 ## Mappers
 
@@ -68,7 +70,7 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 
 | Leitura | Função |
 |---|---|
-| `$2027` | versão (`$06` no Passo 24) |
+| `$2027` | versão (`$07` no Passo 26) |
 | `$202D` | descartes |
 | `$202E/F` | N do último quadro |
 
@@ -77,19 +79,21 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 ISE 14.7, XC3S400, clock de 96 MHz. A semente de placement é escolhida por
 varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0,010 ns.
 
-| | Passo 23 | Passo 24 |
-|---|---|---|
-| Versão em `$2027` | `$05` | `$06` |
-| Semente | 10 | 17 |
-| Folga a 96 MHz | +0,034 ns | +0,024 ns |
-| LUTs | 4982 (69%) | 5003 (69%) |
-| Slices | 2889 (80%) | 2875 (80%) |
-| FFs | 2205 | 2260 |
-| BRAM | 16/16 | 16/16 |
-| Sementes tentadas | 5 | 12 |
+| | Passo 23 | Passo 24 | Passo 26 |
+|---|---|---|---|
+| Versão em `$2027` | `$05` | `$06` | `$07` |
+| Semente | 10 | 17 | 7 |
+| Folga a 96 MHz | +0,034 ns | +0,024 ns | +0,065 ns |
+| LUTs | 4982 (69%) | 5003 (69%) | 4965 (69%) |
+| Slices | 2889 (80%) | 2875 (80%) | 2897 (80%) |
+| FFs | 2205 | 2260 | 2235 |
+| BRAM | 16/16 | 16/16 | 16/16 |
+| Sementes tentadas | 5 | 12 | 4 |
 
-O caminho crítico é o mesmo nos dois: da cor do pixel no TIA até o dado de
-escrita do gravador de vídeo (9 níveis de lógica). A margem está diminuindo.
+O caminho crítico é o mesmo nos três: da cor do pixel no TIA até o dado de
+escrita do gravador de vídeo (9 níveis de lógica). A alocação das cores por
+linha (item B do Passo 26) põe mais lógica nesse caminho e não fecha (-1,5 a
+-2,6 ns); ver [`fpga/experimental/p26B/`](../fpga/experimental/p26B/).
 
 ## Binários
 

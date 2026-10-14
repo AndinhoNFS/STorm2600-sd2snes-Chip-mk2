@@ -4,11 +4,11 @@ Esta pasta espelha a raiz do cartão SD do sd2snes (Mk.II). Contém só o que o
 modo Atari acrescenta ou substitui; o resto da pasta `/sd2snes/` do cartão
 (menu, demais cores do FPGA) continua sendo o da instalação normal do sd2snes.
 
-Estado: **Passo 25**: bitstream do Passo 24 (versão `$06`), player v7 e o firmware do Passo 25, que detecta o mapper FE.
+Estado: **Passo 26**: bitstream do Passo 26 (versão `$07`), player v7 e o firmware do Passo 25, que detecta o mapper FE.
 
 | Arquivo | Tamanho | md5 | O que é |
 |---|---|---|---|
-| `sd2snes/fpga_atari.bit` | 121293 | `473215f082acd657de7f586d61e5d214` | bitstream do core do Atari (Passo 24) |
+| `sd2snes/fpga_atari.bit` | 120807 | `7d19e73ad27b7a03e51e2fe0947b663a` | bitstream do core do Atari (Passo 26: correção da bola) |
 | `sd2snes/atari_snes.bin` | 32768 | `c89e847b9fab2aa53aade96387d4fbe2` | player SNES v7 (é o `atari_snes7.bin` das Releases, já com o nome que o firmware abre) |
 | `sd2snes/firmware.img` | 113323 | `f9634a74371d24489c0727ded05604b3` | firmware do Mk.II com o modo Atari e a detecção do FE (Passo 25, compilado em 2026-10-14; na Release `v0.7-p25` se chama `firmware_p25.img`) |
 
@@ -45,6 +45,19 @@ Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
 5. Copie suas ROMs `.a26` para onde quiser no cartão. ROMs não são
    distribuídas com este projeto.
 
+## Voltar ao bitstream anterior
+
+O bitstream do Passo 24 tem 121293 bytes e md5
+`473215f082acd657de7f586d61e5d214`. Ele está na Release `v0.7-p24` e no
+histórico do repositório:
+
+```
+git show v0.7-p25:sdcard/sd2snes/fpga_atari.bit > fpga_atari.bit
+```
+
+Grave-o como `/sd2snes/fpga_atari.bit`. O bitstream é lido do cartão a cada
+jogo, sem gravação em flash: basta trocar o arquivo.
+
 ## Voltar ao firmware anterior
 
 O firmware anterior (Passos 23 e 24, sem a detecção do FE) tem 113079 bytes e
@@ -61,11 +74,10 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 
 ## Avisos
 
-- No console, em 2026-10-14: com este conjunto o Decathlon original abre, com
-  2-3 pixels da bola fora do lugar. Eles foram corrigidos pelo bitstream do
-  Passo 26 (md5 `7d19e73ad27b7a03e51e2fe0947b663a`, versão `$07`), confirmado no
-  console, que ainda não está nesta pasta. Robot Tank e Thwocker também passam a
-  FE, mas só foram testados em simulação.
+- No console, em 2026-10-14, com este conjunto: Crackpots e Decathlon OK (o
+  Decathlon original abre e a bola está no lugar). Checkers, H.E.R.O. e Seaquest
+  continuam com a limitação de cor do Passo 24. Robot Tank e Thwocker também
+  passam a FE, mas só foram testados em simulação.
 - O `firmware.img` é só para o Mk.II; o Mk.III não foi compilado com o modo
   Atari. Ele é uma cópia modificada do firmware do
   [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e

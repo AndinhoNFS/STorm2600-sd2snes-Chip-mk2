@@ -23,7 +23,7 @@
   10); o caminho pix_src (TIA) -> fb_wdata (gravador) não é relaxado e a
   alocação põe 9 níveis de lógica nele. Proposta (não feita): registrar o pixel
   do TIA e processá-lo num strobe atrasado ~13 clocks, num caminho relaxado. O
-  código está em `atari_core/proto_p26B` (fora deste repositório).
+  código está em [`fpga/experimental/p26B/`](../fpga/experimental/p26B/).
 - **Leituras do TIA**: os bits 5..0 voltam 0 em vez do último valor do
   barramento.
 
@@ -58,7 +58,7 @@ foi usado no console: o Decathlon original abre com o firmware do Passo 25.
   console com o bitstream `7d19e73ad27b7a03e51e2fe0947b663a` (versão `$07`):
   Crackpots e Decathlon OK (os 2-3 pixels da bola do Decathlon sumiram). Em
   simulação: 0 pixels diferentes do emulador na bola, outros 9 jogos sem
-  mudança. Esse bitstream ainda não está neste repositório.
+  mudança. Release `v0.7-p26`.
 
 ## Corrigidos no Passo 25
 

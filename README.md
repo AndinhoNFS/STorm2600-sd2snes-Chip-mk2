@@ -15,21 +15,22 @@ Projetos de base:
 | Item | Versão |
 |---|---|
 | Player SNES | v7 (`atari_snes7.bin`) |
-| Bitstream FPGA | Passo 24 (`fpga_atari.bit`), versão `$06` em `$2027` |
+| Bitstream FPGA | Passo 26 (`fpga_atari.bit`, md5 `7d19e73a…`), versão `$07` em `$2027` |
 | Firmware | Passo 25 (`firmware.img`, detecta o mapper FE) |
-| Uso do FPGA | 5003/7168 LUTs, 2875/3584 slices, 16/16 BRAM, folga +0,024 ns |
+| Uso do FPGA | 4965/7168 LUTs, 2897/3584 slices, 16/16 BRAM, folga +0,065 ns |
+
+Confirmado no console com o bitstream do Passo 26 (Release `v0.7-p26`):
+Crackpots e Decathlon OK, sem a linha vertical do Crackpots e sem os pixels da
+bola do Decathlon. Checkers, H.E.R.O. e Seaquest continuam com a limitação de
+cor do Passo 24 (ver [docs/PENDENCIAS.md](docs/PENDENCIAS.md)). Robot Tank e
+Thwocker só foram testados em simulação.
 
 No console (relato do usuário), com o bitstream do Passo 23 (Release
 `v0.7-p23`): Pitfall, River Raid, Pac‑Man, Enduro, Frostbite e Boxing corretos.
 
 No console, com o bitstream do Passo 24 e o firmware do Passo 25 (Release
-`v0.7-p25`), o Decathlon original abre, com 2-3 pixels da bola fora do lugar.
-Esses pixels e a linha vertical do Crackpots foram corrigidos pelo bitstream do
-Passo 26 (md5 `7d19e73ad27b7a03e51e2fe0947b663a`, versão `$07`), confirmado no
-console. Esse bitstream ainda não está neste repositório.
-
-Robot Tank e Thwocker, também FE, só foram testados em simulação. Bugs
-conhecidos em [docs/PENDENCIAS.md](docs/PENDENCIAS.md).
+`v0.7-p25`), o Decathlon original abre; os 2-3 pixels da bola que sobravam
+foram corrigidos pelo Passo 26.
 
 ## Como funciona (resumo)
 
