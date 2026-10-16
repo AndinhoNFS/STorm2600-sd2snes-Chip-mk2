@@ -1,19 +1,24 @@
 #!/bin/bash
-source /opt/Xilinx/14.7/ISE_DS/settings64.sh > /dev/null
-cd ~/pristine/verilog/sd2snes_atari || exit 1
-[ -f fpga_atari_v11.bit ] || { cp -p fpga_atari.bit fpga_atari_v11.bit; cp -p main.bit main_v11.bit; }
-mkdir -p sweep13
+# Varredura de sementes de placement (Starting Placer Cost Table de map e par).
+# Uso, dentro de verilog/sd2snes_atari/ (gerado por make_atari_shell.py), com o ISE 14.7 no PATH:
+#   SEEDS="13 11 9 7" ../../fpga/scripts/sweep_sementes.sh      (ou o caminho onde estiver este script)
+# Para na primeira semente em que todas as restricoes fecham e a folga a 96 MHz e' >= 0,010 ns; entao
+# gera main.bit e fpga_atari.bit (comprimido com utils/rle do sd2snes).  RLE = caminho do utils/rle
+# (padrao: ../../utils/rle, como no common.mk).
+[ -n "$XILINX" ] || { echo "rode antes: source <ISE 14.7>/settings64.sh"; exit 1; }
+RLE=${RLE:-../../utils/rle}
+mkdir -p sweep
 win=""
-for t in ${SEEDS:-16 17 18 19 20 2 3 4 5 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40}; do
+for t in ${SEEDS:-13 11 9 7 17 10 6 8 12 14 15 16 18 19 20}; do
   sed -i -E "s/(Starting Placer Cost Table \(1-100\) (Map|Par)\" xil_pn:value=\")[0-9]+/\1$t/" *.xise
   rm -f main_map.ncd main.ncd
-  make main.ncd IGNORE_TIMING=1 > sweep13/build_t$t.log 2>&1; rc=$?
+  make main.ncd IGNORE_TIMING=1 > sweep/build_t$t.log 2>&1; rc=$?
   if [ ! -f main.ncd ]; then
-    echo "seed $t: BUILD FAILED rc=$rc"; grep -m4 -E '^ERROR|FATAL_ERROR' sweep13/build_t$t.log
-    if ! [ -f main.ngc ] || grep -q "^ERROR:\(HDLCompilers\|Xst\|NgdBuild\|ConstraintSystem\)" sweep13/build_t$t.log; then break; fi
+    echo "seed $t: BUILD FAILED rc=$rc"; grep -m4 -E '^ERROR|FATAL_ERROR' sweep/build_t$t.log
+    if ! [ -f main.ngc ] || grep -q "^ERROR:\(HDLCompilers\|Xst\|NgdBuild\|ConstraintSystem\)" sweep/build_t$t.log; then break; fi
     continue
   fi
-  mkdir -p sweep13/t$t; cp -f main.par main_map.mrp main.ncd main.pcf sweep13/t$t/
+  mkdir -p sweep/t$t; cp -f main.par main_map.mrp sweep/t$t/
   res=$(awk -F'|' '/TS_(CLK21|snes_a26_clkin1) = PERIOD/ {gsub(/ /,"",$3); gsub(/ /,"",$5); print $3, $5; exit}' main.par)
   luts=$(grep -m1 "Total Number of 4 input LUTs" main_map.mrp | awk '{print $7}')
   met=$(grep -c "All constraints were met" main.par)
@@ -22,12 +27,12 @@ for t in ${SEEDS:-16 17 18 19 20 2 3 4 5 21 22 23 24 25 26 27 28 29 30 31 32 33 
 done
 if [ -n "$win" ]; then
   echo "winner: $win"
-  make main.bit > sweep13/build_bit.log 2>&1; echo "make main.bit exit: $?"
-  ../../utils/rle main.bit fpga_atari.bit; echo "rle exit: $?"
+  make main.bit > sweep/build_bit.log 2>&1; echo "make main.bit exit: $?"
+  "$RLE" main.bit fpga_atari.bit; echo "rle exit: $?"
   ls -l main.bit fpga_atari.bit; md5sum main.bit fpga_atari.bit
   sed -n '/Constraint  *|/,/All constraints/p' main.par
   grep -n "Number of Slice Flip Flops\|Number of occupied Slices\|Total Number of 4 input LUTs\|Number of RAMB16s" main_map.mrp
-  grep -n "Cost Table" *.xise
 else
   echo "NO SEED CLOSED"
+  exit 1
 fi

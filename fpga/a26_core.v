@@ -257,6 +257,11 @@ module a26_core #(
   assign rom_miss_ev = cpu_ce & rom_cs & ~cpu_we & ~rom_valid;
 
   // ---- CPU read mux --------------------------------------------------------
-  assign cpu_din = rom_cs ? rom_q : (riot_cs ? riot_dout : tia_dout);
+  // Passo 29: the TIA drives only D7/D6 on a read; D5..D0 keep the last byte the bus carried (the operand
+  // or address byte of the previous cycle, or the byte of a dummy read), as on the console.  Some programs
+  // depend on it (e.g. AND $0F written for AND #$0F).
+  reg [7:0] last_bus = 8'h00;
+  always @(posedge clk) if (cpu_ce) last_bus <= cpu_we ? cpu_dout : cpu_din;
+  assign cpu_din = rom_cs ? rom_q : (riot_cs ? riot_dout : {tia_dout[7:6], last_bus[5:0]});
 
 endmodule

@@ -269,6 +269,8 @@ INST "snes_a26/core/u_tia/pix_stb" TNM = FFS "a26_fast";
 INST "snes_a26/vid/fb_wr"          TNM = FFS "a26_fast";
 INST "snes_a26/vid/vsync_d"        TNM = FFS "a26_fast";
 INST "snes_a26/vid/pub_pend"       TNM = FFS "a26_fast";
+INST "snes_a26/vid/dsh*"           TNM = FFS "a26_fast";
+INST "snes_a26/vid/vsh*"           TNM = FFS "a26_fast";
 TIMEGRP "a26_slow_core" = "a26_core_all" EXCEPT "a26_fast";
 TIMEGRP "a26_slow_vid"  = "a26_vid_all" EXCEPT "a26_fast";
 TIMESPEC TS_a26_slow = FROM "a26_slow_core" TO "a26_slow_core" 125 ns;
@@ -290,7 +292,7 @@ TIMESPEC TS_a26_rom = FROM "a26_rom_ram" TO "a26_slow_core" 125 ns;
 ENTRY_RE = re.compile(r"[ \t]*<file\b(?:[^>]*/>|[^>]*>.*?</file>)[ \t]*\n?", re.S)
 
 
-PLACER_SEED = 17
+PLACER_SEED = 13
 
 
 def make_xise(text, base_files, local_files):

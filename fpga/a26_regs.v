@@ -24,7 +24,9 @@
 //      applies from the next frame on.
 //   7  buffer lock: bit7 = lock valid, bits 1:0 = buffer (0..2) the SNES is
 //      reading; the core never starts a frame in that buffer.  Bit7 = 0 releases.
-//   8..15 unused (the $2020-$202F window of the FPGA copier is 16 bytes)
+//   8  bits 1:0 = palette: 0 Color-1, 1 Color-2, 2 Color-3, 3 Black/White (default 0).  Taken
+//      when VSYNC ends, so it applies from the next frame on.
+//   9..15 unused (the $2020-$202F window of the FPGA copier is 16 bytes)
 // READ
 //   0  bits 1:0 = buffer (0..2) holding the newest complete frame, bits 7:2 = 0
 //   1  completed-frame counter
@@ -69,6 +71,7 @@ module a26_regs (
   output     [2:0] mapper,
   output           pause,
   output     [6:0] yofs,
+  output     [1:0] pal,
   output           lock_v,
   output     [1:0] lock_i,
 
@@ -91,12 +94,13 @@ module a26_regs (
   reg [4:0] r_ctrl;
   reg [3:0] r_inpt;
   reg [6:0] r_yofs;
+  reg [1:0] r_pal;
   reg [2:0] r_lock;
   reg [7:0] data_out_r;
 
   initial begin
     r_swcha = 8'hFF; r_swchb = 8'hFF; r_fire = 2'b11;
-    r_ctrl = 5'b00010; r_inpt = 4'h0; r_yofs = 7'd0; r_lock = 3'd0; data_out_r = 8'h00; diag_clr = 1'b0;
+    r_ctrl = 5'b00010; r_inpt = 4'h0; r_yofs = 7'd0; r_pal = 2'd0; r_lock = 3'd0; data_out_r = 8'h00; diag_clr = 1'b0;
   end
 
   assign swcha  = r_swcha;
@@ -108,6 +112,7 @@ module a26_regs (
   assign mapper = r_ctrl[3:1];
   assign pause  = r_ctrl[4];
   assign yofs   = r_yofs;
+  assign pal    = r_pal;
   assign lock_v = r_lock[2];
   assign lock_i = r_lock[1:0];
 
@@ -123,6 +128,7 @@ module a26_regs (
       r_ctrl  <= 5'b00010;                      // mapper 1 (4K), not running, not paused
       r_inpt  <= 4'h0;
       r_yofs  <= 7'd0;
+      r_pal   <= 2'd0;
       r_lock  <= 3'd0;
     end else if (reg_we_rising & enable) begin
       case (reg_addr)
@@ -132,6 +138,7 @@ module a26_regs (
         4'd3: r_ctrl  <= reg_data_in[4:0];
         4'd4: r_inpt  <= reg_data_in[3:0];
         4'd6: r_yofs  <= yofs_d;
+        4'd8: r_pal   <= reg_data_in[1:0];
         4'd7: r_lock  <= {reg_data_in[7], reg_data_in[1:0]};
         default: ;
       endcase
@@ -151,7 +158,7 @@ module a26_regs (
         4'd4: data_out_r <= 8'h41;             // 'A'
         4'd5: data_out_r <= 8'h32;             // '2'
         4'd6: data_out_r <= 8'h36;             // '6'
-        4'd7: data_out_r <= 8'h07;             // version
+        4'd7: data_out_r <= 8'h0B;             // version
         4'd8: data_out_r <= miss_cnt;
         4'd9: data_out_r <= lat_max;
         4'd10: data_out_r <= {r_yofs[6], r_yofs};

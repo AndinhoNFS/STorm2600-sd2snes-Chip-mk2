@@ -29,6 +29,7 @@ module tb_a26_sys;
   wire [7:0] swcha, swchb;
   wire       fire0, fire1, run, pause;
   wire [6:0] yofs;
+  wire [1:0] pal;
   wire       lock_v;
   wire [1:0] lock_i, fb_newest;
   wire [3:0] inpt;
@@ -47,7 +48,7 @@ module tb_a26_sys;
                  .reg_oe_falling(reg_oe_falling), .reg_we_rising(reg_we_rising),
                  .swcha(swcha), .swchb(swchb), .fire0(fire0), .fire1(fire1),
                  .inpt(inpt), .run(run), .mapper(mapper), .pause(pause),
-                 .yofs(yofs), .lock_v(lock_v), .lock_i(lock_i),
+                 .yofs(yofs), .pal(pal), .lock_v(lock_v), .lock_i(lock_i),
                  .fb_newest(fb_newest), .fb_frames(fb_frames), .fb_nlines(fb_nlines),
                  .fb_dropped(fb_dropped), .tile_n(tile_n),
                  .rom_miss(rom_miss), .fifo_ovf(fifo_ovf), .loaded(loaded),
@@ -94,7 +95,7 @@ module tb_a26_sys;
                  .colubk(colubk), .colupf(colupf), .colup0(colup0), .colup1(colup1),
                  .fb_wr(fb_wr), .fb_waddr(fb_waddr), .fb_wdata(fb_wdata),
                  .fb_newest(fb_newest), .fb_frames(fb_frames), .fb_nlines(fb_nlines),
-                 .lock_v(lock_v), .lock_i(lock_i), .yofs(yofs),
+                 .lock_v(lock_v), .lock_i(lock_i), .yofs(yofs), .pal(pal),
                  .ev_row(ev_row), .ev_end(ev_end), .end_lines(end_lines),
                  .eng_ack(eng_ack), .eng_ovf(eng_ovf), .fb_dropped(fb_dropped));
 
@@ -218,7 +219,7 @@ module tb_a26_sys;
     // ---- what the program saw through the console ports ---------------
     expect8("RAM $80 = SWCHA",  core.u_riot.ram[0], 8'hD7);
     expect8("RAM $81 = SWCHB",  core.u_riot.ram[1], 8'h3F);
-    expect8("RAM $82 = INPT4",  core.u_riot.ram[2], 8'h80);
+    expect8("RAM $82 = INPT4",  core.u_riot.ram[2], 8'h8C);   // D5..D0 = last bus byte ($0C, the operand), Passo 29
     expect8("rom_miss",         {7'b0, rom_miss},   8'h00);
     expect8("CPU cycles before loaded", {7'b0, early}, 8'h00);
     expect8("fifo overflow",    {7'b0, fifo_ovf},   8'h00);
@@ -268,14 +269,14 @@ module tb_a26_sys;
     sreg_rd(4'd14, v); expect8("tile count register", v, 8'h02);
 
     // colour tables, line 40: 4 bytes k, k, BGR555 low, high.  COLUBK = 0 -> $0000,
-    // COLUPF = $0E -> TIA colour 7 -> $7FFF (white)
+    // COLUPF = $0E -> TIA colour 7 -> $77BD (white of Color-1, the palette after reset)
     idx = base + 20'h4000 + 40 * 4;
     expect8("COLUBK table, line 40: index",  slot.mem[idx],     8'h00);
     expect8("COLUBK table, line 40: colour", slot.mem[idx + 2] | slot.mem[idx + 3], 8'h00);
     idx = base + 20'h4400 + 40 * 4;
     expect8("COLUPF table, line 40: index",  slot.mem[idx] & slot.mem[idx + 1], 8'h01);
-    expect8("COLUPF table, line 40: low",    slot.mem[idx + 2], 8'hFF);
-    expect8("COLUPF table, line 40: high",   slot.mem[idx + 3], 8'h7F);
+    expect8("COLUPF table, line 40: low",    slot.mem[idx + 2], 8'hBD);
+    expect8("COLUPF table, line 40: high",   slot.mem[idx + 3], 8'h77);
     idx = base + 20'h5000 + 40 * 2;
     expect8("window table, line 40: left",   slot.mem[idx],     8'd48);
     expect8("window table, line 40: right",  slot.mem[idx + 1], 8'd207);

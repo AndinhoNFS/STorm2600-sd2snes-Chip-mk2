@@ -56,6 +56,7 @@ module a26_top #(
   wire [7:0] swcha, swchb;
   wire       fire0, fire1, run, pause;
   wire [6:0] yofs;
+  wire [1:0] pal;
   wire       lock_v;
   wire [1:0] lock_i, fb_newest;
   wire [3:0] inpt;
@@ -75,7 +76,7 @@ module a26_top #(
     .reg_oe_falling(reg_oe_falling), .reg_we_rising(reg_we_rising),
     .swcha(swcha), .swchb(swchb), .fire0(fire0), .fire1(fire1),
     .inpt(inpt), .run(run), .mapper(mapper), .pause(pause),
-    .yofs(yofs), .lock_v(lock_v), .lock_i(lock_i),
+    .yofs(yofs), .pal(pal), .lock_v(lock_v), .lock_i(lock_i),
     .fb_newest(fb_newest), .fb_frames(fb_frames), .fb_nlines(fb_nlines),
     .fb_dropped(fb_dropped), .tile_n(tile_n),
     .rom_miss(rom_miss), .fifo_ovf(fifo_ovf), .loaded(loaded),
@@ -132,7 +133,7 @@ module a26_top #(
     .colubk(colubk), .colupf(colupf), .colup0(colup0), .colup1(colup1),
     .fb_wr(fb_wr), .fb_waddr(fb_waddr), .fb_wdata(fb_wdata),
     .fb_newest(fb_newest), .fb_frames(fb_frames), .fb_nlines(fb_nlines),
-    .lock_v(lock_v), .lock_i(lock_i), .yofs(yofs),
+    .lock_v(lock_v), .lock_i(lock_i), .yofs(yofs), .pal(pal),
     .ev_row(ev_row), .ev_end(ev_end), .end_lines(end_lines),
     .eng_ack(eng_ack), .eng_ovf(eng_ovf), .fb_dropped(fb_dropped));
 

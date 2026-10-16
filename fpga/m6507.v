@@ -19,7 +19,12 @@
 // SCOPE
 //   All 151 documented opcodes, binary and decimal (NMOS) ADC/SBC.
 //   No IRQ/NMI (the 6507 has no such pins).  BRK works.
-//   Undocumented opcodes are NOT implemented: they run as 1-byte NOPs.
+//   Undocumented opcodes (Passo 29, after the collection test): SLO RLA SRE RRA SAX LAX DCP ISB,
+//   ANC ALR ARR SBX XAA LXA, SBC #$EB, and the 2/3-byte NOPs with their documented lengths and timing.
+//   RRA/ISB use the binary adder (decimal mode not modelled for them).  JAM opcodes run as 1-byte NOPs.
+//   SHA ($93 $9F), SHX ($9E), SHY ($9C), TAS ($9B) store reg & (H+1) (H = high byte of the base address; the
+//   page-crossing address corruption is not modelled); LAS ($BB): A = X = S = M & S.
+//   (checked against the ALE with a test ROM: values and cycle counts).
 //   Cycle counts follow the documented table (page-cross penalty on
 //   indexed reads, branch +1 / +2, RMW dummy write, etc.).
 //
@@ -91,11 +96,11 @@ module m6507 (
     kind = K_RD;
     case (cc)
       2'b01: begin
-        kind = (aaa == 3'd4) ? K_WR : K_RD;
+        kind = (aaa == 3'd4 && bbb != 3'd2) ? K_WR : K_RD;
         case (bbb)
           3'd0: mode = M_INDX;
           3'd1: mode = M_ZP;
-          3'd2: mode = (aaa == 3'd4) ? M_IMP : M_IMM;
+          3'd2: mode = M_IMM;                                          // $89: NOP #imm
           3'd3: mode = M_ABS;
           3'd4: mode = M_INDY;
           3'd5: mode = M_ZPX;
@@ -106,31 +111,43 @@ module m6507 (
       2'b10: begin
         kind = (aaa == 3'd4) ? K_WR : (aaa == 3'd5) ? K_RD : K_RMW;
         case (bbb)
-          3'd0: mode = (aaa == 3'd5) ? M_IMM : M_IMP;
+          3'd0: mode = (aaa >= 3'd4) ? M_IMM : M_IMP;                  // $82 $C2 $E2: NOP #imm
           3'd1: mode = M_ZP;
           3'd3: mode = M_ABS;
           3'd5: mode = (aaa == 3'd4 || aaa == 3'd5) ? M_ZPY : M_ZPX;
-          3'd7: mode = (aaa == 3'd5) ? M_ABSY : M_ABSX;
+          3'd7: mode = (aaa == 3'd5 || aaa == 3'd4) ? M_ABSY : M_ABSX;   // $9E SHX: abs,Y
           default: mode = M_IMP;      // 2: accumulator/implied, 4 and 6: TXS/TSX/JAM
         endcase
       end
       2'b00: begin
         kind = (aaa == 3'd4) ? K_WR : K_RD;
         case (bbb)
-          3'd0: mode = (aaa >= 3'd5) ? M_IMM : M_IMP;
+          3'd0: mode = (aaa >= 3'd4) ? M_IMM : M_IMP;                  // $80: NOP #imm
           3'd1: mode = M_ZP;
           3'd3: mode = M_ABS;
-          3'd5: mode = (aaa == 3'd4 || aaa == 3'd5) ? M_ZPX : M_IMP;
-          3'd7: mode = (aaa == 3'd5) ? M_ABSX : M_IMP;
+          3'd5: mode = M_ZPX;                                          // $14 $34 ..: NOP zp,X
+          3'd7: mode = M_ABSX;                                         // $1C $3C ..: NOP abs,X
           default: mode = M_IMP;
         endcase
       end
-      default: mode = M_IMP;          // cc=11: undocumented -> NOP
+      default: begin                  // cc=11: undocumented, addressing of the cc=01 column
+        kind = (aaa == 3'd4) ? K_WR : (aaa == 3'd5 || bbb == 3'd2) ? K_RD : K_RMW;
+        case (bbb)
+          3'd0: mode = M_INDX;
+          3'd1: mode = M_ZP;
+          3'd2: mode = M_IMM;
+          3'd3: mode = M_ABS;
+          3'd4: mode = M_INDY;
+          3'd5: mode = (aaa == 3'd4 || aaa == 3'd5) ? M_ZPY : M_ZPX;
+          3'd6: mode = M_ABSY;
+          default: mode = (aaa == 3'd4 || aaa == 3'd5) ? M_ABSY : M_ABSX;
+        endcase
+      end
     endcase
   end
 
   wire [7:0] idx = (mode == M_ZPX || mode == M_ABSX || mode == M_INDX) ? X : Y;
-  wire [7:0] stv = (cc == 2'b01) ? A : (cc == 2'b10) ? X : Y;
+  wire [7:0] stv = (cc == 2'b01) ? A : (cc == 2'b10) ? X : (cc == 2'b11) ? (A & X) : Y;
 
   wire [7:0] zpsum  = ADL + idx;
   wire [8:0] absum  = {1'b0, ADL} + {1'b0, idx};
@@ -190,6 +207,17 @@ module m6507 (
     endcase
   end
 
+  // undocumented RMW combos: the second operation takes the new memory value r = sh_res
+  wire [8:0] rra9  = {1'b0, A} + {1'b0, sh_res} + {8'b0, sh_c};
+  wire       rra_v = ~(A[7] ^ sh_res[7]) & (A[7] ^ rra9[7]);
+  wire [8:0] isb9  = {1'b0, A} + {1'b0, ~sh_res} + {8'b0, fC};
+  wire       isb_v = (A[7] ^ sh_res[7]) & (A[7] ^ isb9[7]);
+  wire [8:0] dcp9  = {1'b0, A} - {1'b0, sh_res};
+  // immediate combos
+  wire [7:0] anda  = A & din;
+  wire [7:0] arr_r = {fC, anda[7:1]};
+  wire [8:0] sbx9  = {1'b0, A & X} - {1'b0, din};
+
   // ------------------------------------------------------------------
   // tasks (all called from the single clocked block below)
   // ------------------------------------------------------------------
@@ -242,14 +270,32 @@ module m6507 (
         end
         2'b00: begin
           case (aaa)
-            3'd1: begin fZ <= ((A & din) == 8'h00); fN <= din[7]; fV <= din[6]; end  // BIT
+            3'd1: if (bbb == 3'd1 || bbb == 3'd3) begin fZ <= ((A & din) == 8'h00); fN <= din[7]; fV <= din[6]; end  // BIT
             3'd5: begin Y <= din; nz(din); end                         // LDY
-            3'd6: begin fC <= ~cmpy9[8]; nz(cmpy9[7:0]); end           // CPY
-            3'd7: begin fC <= ~cmpx9[8]; nz(cmpx9[7:0]); end           // CPX
+            3'd6: if (bbb == 3'd0 || bbb == 3'd1 || bbb == 3'd3) begin fC <= ~cmpy9[8]; nz(cmpy9[7:0]); end   // CPY
+            3'd7: if (bbb == 3'd0 || bbb == 3'd1 || bbb == 3'd3) begin fC <= ~cmpx9[8]; nz(cmpx9[7:0]); end   // CPX
             default: ;
           endcase
         end
-        default: ;
+        default: begin                                                 // cc=11
+          if (aaa == 3'd5) begin                                       // LAX / LXA / LAS
+            if (bbb == 3'd2) begin A <= (A | 8'hEE) & din; X <= (A | 8'hEE) & din; nz((A | 8'hEE) & din); end
+            else if (bbb == 3'd6) begin A <= din & S; X <= din & S; S <= din & S; nz(din & S); end   // $BB LAS
+            else begin A <= din; X <= din; nz(din); end
+          end else if (bbb == 3'd2) begin
+            case (aaa)
+              3'd0, 3'd1: begin A <= anda; nz(anda); fC <= anda[7]; end                    // ANC
+              3'd2: begin A <= {1'b0, anda[7:1]}; nz({1'b0, anda[7:1]}); fC <= anda[0]; end // ALR
+              3'd3: begin A <= arr_r; nz(arr_r); fC <= arr_r[6]; fV <= arr_r[6] ^ arr_r[5]; end // ARR (binary)
+              3'd4: begin A <= (A | 8'hEE) & X & din; nz((A | 8'hEE) & X & din); end       // XAA (unstable)
+              3'd6: begin X <= sbx9[7:0]; fC <= ~sbx9[8]; nz(sbx9[7:0]); end               // SBX
+              default: begin                                                              // $EB = SBC #
+                A  <= fD ? sd1[7:0] : sbc9[7:0];
+                fC <= sbc9[8]; fV <= sbc_v; fN <= sbc9[7]; fZ <= (sbc9[7:0] == 8'h00);
+              end
+            endcase
+          end
+        end
       endcase
     end
   endtask
@@ -406,7 +452,14 @@ module m6507 (
             ab <= PC; st <= ST_FETCH;                          // data already read
           end else begin
             ab <= {ADH + {7'b0, cx}, ADL};
-            we <= (kind == K_WR); dout <= stv; st <= ST_EA;
+            we <= (kind == K_WR); st <= ST_EA;
+            case (IR)
+              8'h93, 8'h9F: dout <= A & X & (ADH + 8'd1);      // SHA
+              8'h9E:        dout <= X & (ADH + 8'd1);          // SHX
+              8'h9C:        dout <= Y & (ADH + 8'd1);          // SHY
+              8'h9B: begin  dout <= A & X & (ADH + 8'd1); S <= A & X; end   // TAS
+              default:      dout <= stv;
+            endcase
           end
         end
 
@@ -421,6 +474,16 @@ module m6507 (
 
         ST_RMW_D: begin                      // old value is being written back
           dout <= sh_res; fC <= sh_c; nz(sh_res); st <= ST_RMW_W;
+          if (cc == 2'b11) begin
+            case (aaa)
+              3'd0: begin A <= A | sh_res; nz(A | sh_res); end                 // SLO
+              3'd1: begin A <= A & sh_res; nz(A & sh_res); end                 // RLA
+              3'd2: begin A <= A ^ sh_res; nz(A ^ sh_res); end                 // SRE
+              3'd3: begin A <= rra9[7:0]; fC <= rra9[8]; fV <= rra_v; nz(rra9[7:0]); end   // RRA
+              3'd6: begin fC <= ~dcp9[8]; nz(dcp9[7:0]); end                   // DCP
+              default: begin A <= isb9[7:0]; fC <= isb9[8]; fV <= isb_v; nz(isb9[7:0]); end // ISB
+            endcase
+          end
         end
         ST_RMW_W: begin we <= 1'b0; ab <= PC; st <= ST_FETCH; end
 

@@ -248,7 +248,7 @@ module tb_a26_top;
     repeat (4) @(negedge clk);
 
     sreg_rd(4'd4, v); expect8("signature 'A'", v, 8'h41);
-    sreg_rd(4'd7, v); expect8("version",       v, 8'h07);
+    sreg_rd(4'd7, v); expect8("version",       v, 8'h0B);
     sreg_rd(4'd13, v); expect8("dropped frames at start", v, 8'h00);
     if (loop_enable !== 1'b0 || busy !== 2'b00) begin errs = errs + 1; $display("FAIL  loop_enable/busy not idle"); end
     sreg_wr(4'd0, 8'hD7);
@@ -268,7 +268,7 @@ module tb_a26_top;
 
     expect8("RAM $80 = SWCHA",  top.core.u_riot.ram[0], 8'hD7);
     expect8("RAM $81 = SWCHB",  top.core.u_riot.ram[1], 8'h3F);
-    expect8("RAM $82 = INPT4",  top.core.u_riot.ram[2], 8'h80);
+    expect8("RAM $82 = INPT4",  top.core.u_riot.ram[2], 8'h8C);   // D5..D0 = last bus byte ($0C, the operand), Passo 29
 
     sreg_rd(4'd11, v); expect8("status: rom_miss/ovf clear", v & 8'h60, 8'h00);
     sreg_rd(4'd0, v); expect8("R0 = newest buffer, other bits 0", v, 8'h01);
@@ -323,6 +323,16 @@ module tb_a26_top;
     if (top.vid.lock_v !== 1'b1 || top.vid.lock_i !== 2'd2) begin errs = errs + 1; $display("FAIL  lock does not reach the writer"); end
     sreg_wr(4'd7, 8'h01); sreg_rd(4'd12, v); expect8("lock readback (released)", v, 8'h01);
     sreg_wr(4'd7, 8'h00);
+    // palette (reg 8, bits 1:0): reaches the writer, which takes it only when VSYNC ends
+    if (top.vid.pal !== 2'd0) begin errs = errs + 1; $display("FAIL  palette after reset is not 0"); end
+    sreg_wr(4'd8, 8'hFE);
+    if (top.vid.pal !== 2'd2) begin errs = errs + 1; $display("FAIL  reg 8 = $FE does not give palette 2"); end
+    else $display("ok    reg 8 = $FE -> palette 2 at the writer (bits 7:2 ignored)");
+    sreg_wr(4'd8, 8'h03);
+    if (top.vid.pal !== 2'd3) begin errs = errs + 1; $display("FAIL  reg 8 = 3 does not give palette 3"); end
+    else $display("ok    reg 8 = 3 -> palette 3 at the writer");
+    sreg_wr(4'd8, 8'h00);
+    if (top.vid.pal !== 2'd0) begin errs = errs + 1; $display("FAIL  reg 8 = 0 does not give palette 0"); end
     sreg_wr(4'd3, 8'h13);                                // run, mapper 1, pause
     sreg_rd(4'd3, v); expect8("control readback (pause)", v, 8'h13);
     repeat (60000) @(negedge clk);                       // the dictionary may still be writing a tile row
