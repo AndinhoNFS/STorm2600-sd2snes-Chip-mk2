@@ -1,4 +1,4 @@
-# Design: player SNES v7 + bitstream Passo 26
+# Design: player SNES v13 + bitstream Passo 31
 
 ## Quadro na PSRAM
 
@@ -23,10 +23,24 @@ A entrada 224 é preta.
 
 ## Cores
 
-O core lê as 4 cores (COLUBK/PF/P0/P1) uma vez por linha, no pixel 16.
-Passo 23: se a cor final de um pixel difere da cor guardada do seu índice mas
-coincide com outra das 4 guardadas, usa o índice dessa. Só acerta com até 4
-cores finais por linha (medido nos 6 jogos de teste).
+Cada linha tem 4 índices de cor (os canais 0..3 do HDMA).
+
+- Até o Passo 29 o core lia as 4 cores (COLUBK/PF/P0/P1) uma vez por linha, no
+  pixel 16; uma cor trocada depois disso se perdia (Checkers, barras do H.E.R.O.
+  e do Seaquest).
+- Passo 31: os índices são **alocados** conforme os pixels chegam. Cada pixel
+  pega o índice que já tem a sua cor final (a do registrador quando o TIA
+  desenhou o pixel); senão, um índice livre, que passa a ter essa cor no resto
+  da linha. As cores de uma linha vão para a tabela durante a linha seguinte.
+  O gravador roda 13 clocks depois do pixel, sobre cópias registradas das
+  saídas do TIA, para que essa lógica não fique num caminho de 1 clock.
+  Limite: uma linha com mais de 4 cores fica com as 4 primeiras.
+
+Paletas (Passo 28, registrador de escrita 8 = `$2028`, bits 1:0; vale a partir
+do quadro seguinte): 0 = Color-1 (padrão), 1 = Color-2, 2 = Color-3,
+3 = Black/White (os 8 cinzas de Color-1, pela luminância do Atari). A cor
+BGR555 de cada índice sai de `pal_bgr()` em `fpga/a26_vidwr.v` (cópia das
+tabelas em `fpga/a26_pal4.hex`).
 
 ## TIA: atraso das escritas (Passo 24)
 
@@ -67,10 +81,11 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 | 3 | {run, mapper 3:1, pause 4} |
 | 6 | deslocamento da 1ª linha capturada (o player escreve 0) |
 | 7 | trava |
+| 8 | paleta, bits 1:0 (Passo 28) |
 
 | Leitura | Função |
 |---|---|
-| `$2027` | versão (`$07` no Passo 26) |
+| `$2027` | versão (`$0B` no Passo 31) |
 | `$202D` | descartes |
 | `$202E/F` | N do último quadro |
 
@@ -79,21 +94,23 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 ISE 14.7, XC3S400, clock de 96 MHz. A semente de placement é escolhida por
 varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0,010 ns.
 
-| | Passo 23 | Passo 24 | Passo 26 |
-|---|---|---|---|
-| Versão em `$2027` | `$05` | `$06` | `$07` |
-| Semente | 10 | 17 | 7 |
-| Folga a 96 MHz | +0,034 ns | +0,024 ns | +0,065 ns |
-| LUTs | 4982 (69%) | 5003 (69%) | 4965 (69%) |
-| Slices | 2889 (80%) | 2875 (80%) | 2897 (80%) |
-| FFs | 2205 | 2260 | 2235 |
-| BRAM | 16/16 | 16/16 | 16/16 |
-| Sementes tentadas | 5 | 12 | 4 |
+| | Passo 23 | Passo 24 | Passo 26 | Passo 27 | Passo 28b | Passo 29 | Passo 31 |
+|---|---|---|---|---|---|---|---|
+| Versão em `$2027` | `$05` | `$06` | `$07` | `$08` | `$09` | `$0A` | `$0B` |
+| Semente | 10 | 17 | 7 | 13 | 9 | 11 | 13 |
+| Folga a 96 MHz | +0,034 ns | +0,024 ns | +0,065 ns | +0,012 ns | +0,114 ns | +0,021 ns | +0,013 ns |
+| LUTs | 4982 | 5003 | 4965 | 4996 | 5232 | 5519 | 5587 (77%) |
+| Slices | 2889 | 2875 | 2897 | 2931 | 3005 | 3136 | 3155 (88%) |
+| FFs | 2205 | 2260 | 2235 | 2254 | 2258 | 2253 | 2337 |
+| BRAM | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
 
-O caminho crítico é o mesmo nos três: da cor do pixel no TIA até o dado de
-escrita do gravador de vídeo (9 níveis de lógica). A alocação das cores por
-linha (item B do Passo 26) põe mais lógica nesse caminho e não fecha (-1,5 a
--2,6 ns); ver [`fpga/experimental/p26B/`](../fpga/experimental/p26B/).
+O caminho crítico continua sendo o que vai das saídas do TIA ao gravador de
+vídeo. A alocação das cores por linha do Passo 26 (item B) punha 9 níveis de
+lógica nesse caminho e não fechava (-1,5 a -2,6 ns; guardada em
+[`fpga/experimental/p26B/`](../fpga/experimental/p26B/)); no Passo 31 ela roda
+num strobe atrasado de 13 clocks (registradores `dsh`/`vsh`, no grupo
+`a26_fast` do `ucf.extra`) e fecha. Como gerar o bitstream:
+[`fpga/LEIAME.md`](../fpga/LEIAME.md).
 
 ## Binários
 

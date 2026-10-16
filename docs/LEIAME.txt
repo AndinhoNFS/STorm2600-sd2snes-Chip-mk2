@@ -1,22 +1,36 @@
-Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13;
-firmware do passo 25 e bit do passo 26 em 2026-10-14)
-
 NOTA DO REPOSITORIO: este e' o LEIAME da pasta de trabalho atari_deploy.  Os binarios citados aqui NAO estao
 no repositorio, menos os tres que vao para o cartao: eles estao em sdcard/sd2snes/ (ver sdcard/LEIAME.md;
-o firmware_p25.img e' o sdcard/sd2snes/firmware.img) e tambem na pagina de Releases.
+o fpga_atari_p31.bit e' o sdcard/sd2snes/fpga_atari.bit, o atari_snes13.bin e' o sdcard/sd2snes/atari_snes.bin
+e o firmware_p25.img e' o sdcard/sd2snes/firmware.img) e tambem na pagina de Releases.  Pastas citadas
+(atari_core, atari_compare, atari_fw, atari_deploy, VM de build) sao pastas de trabalho fora do repositorio.
+
+Atari 2600 no sd2snes Mk.II -- arquivos para o cartao (reunidos em 2026-10-11; bit do passo 24 em 2026-10-13;
+firmware do passo 25, bits dos passos 26, 27 e 28 em 2026-10-14; passo 29 e passo 31 (fpga_atari_p31.bit) em 2026-10-16)
 
 No cartao, segundo o usuario (2026-10-12): o bit do passo 23 e o player v7.  O bit do passo 24 (fpga_atari_v13.bit)
 foi gravado depois; em 2026-10-14 o usuario testou no console o bit do passo 24 com o firmware do passo 25
 (firmware_p25.img): o Decathlon original abre, sobram 2-3 pixels da bola.  Robot Tank e Thwocker (tambem FE)
 NAO foram testados no console, so' em simulacao.
-O bit do passo 26 (este fpga_atari.bit, versao $07) foi testado no console pelo usuario em 2026-10-14:
+O bit do passo 26 (fpga_atari_v14.bit, versao $07) foi testado no console pelo usuario em 2026-10-14:
 Crackpots e Decathlon OK (a bola).  Checkers, H.E.R.O. e Seaquest continuam com a limitacao de cor do passo 24.
+O bit do passo 27 (fpga_atari_v15.bit, versao $08, uma paleta) NAO foi testado no console.
+O bit do passo 28 (este fpga_atari.bit, versao $09) tem 4 paletas no registrador $2028 (bits 1:0: 0 Color-1,
+1 Color-2, 2 Color-3, 3 Black/White; vale a partir do quadro seguinte).  O player v7 nao escreve $2028: com ele
+a tela fica sempre em Color-1.  Ainda NAO foi testado no console.
 
 Arquivo          Tamanho   MD5                               Destino no cartao
 ---------------  --------  --------------------------------  --------------------------
-fpga_atari.bit    120807   7d19e73ad27b7a03e51e2fe0947b663a  /sd2snes/fpga_atari.bit  (passo 26, versao $07)
+fpga_atari.bit    128808   ff0b729d1dba3ef668935af413f321c5  /sd2snes/fpga_atari.bit  (passo 29, versao $0A)
+fpga_atari_p31.bit 129099  5bbcf7b2be8815e326de021119af63bf  (passo 31, versao $0B, aprovado pelo usuario; vai com o
+                                                             player v13; gravar como /sd2snes/fpga_atari.bit)
+fpga_atari_v16b.bit 124554 3cead098fd77f98321fb0a34b06913c6  (nao vai para o cartao: passo 28b, volta atras)
+fpga_atari_v16.bit 124554  6d3cf91601cc0697f4dcddad65873d34  (nao vai para o cartao: passo 28 com Color-2 $00 = #101010)
+fpga_atari_v15.bit 123416  db232e03c9e9e91921511ff01b9c7efc  (nao vai para o cartao: o bit do passo 27, volta atras)
+fpga_atari_v14.bit 120807  7d19e73ad27b7a03e51e2fe0947b663a  (nao vai para o cartao: o bit do passo 26, volta atras)
 fpga_atari_v13.bit 121293  473215f082acd657de7f586d61e5d214  (nao vai para o cartao: o bit do passo 24, volta atras)
-atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7; gravar COM ESTE NOME no cartao)
+atari_snes13.bin   32768   8735f54a9edb3e8da8b32d25855a6c96  /sd2snes/atari_snes.bin  (player v13: X paleta, Y nivel; gravar COM
+                                                             ESTE NOME no cartao; fontes em player_fontes_v13.zip)
+atari_snes7.bin    32768   c89e847b9fab2aa53aade96387d4fbe2  /sd2snes/atari_snes.bin  (player v7, volta atras do v13)
 atari_snes.bin     32768   ddda5baf48b5586a34d023e10dfead27  (nao vai para o cartao: e' o player v3, so' serve ate' o bit v7)
 firmware_p25.img  113323   f9634a74371d24489c0727ded05604b3  /sd2snes/firmware.img  (passo 25: detecta FE; gravar COM O NOME
                                                              firmware.img no cartao, depois de guardar o atual)
@@ -43,20 +57,63 @@ atari_snes_v3h.bin 32768   ddda5baf48b5586a34d023e10dfead27  (copia do atari_sne
                                                               o conteudo e' o v3, nao o 3h)
 
 Origem
-- fpga_atari.bit : VM (storm-ise147), ~/pristine/verilog/sd2snes_atari/fpga_atari_v14.bit.
+- fpga_atari.bit : VM de build, sd2snes_atari (na VM de build)/fpga_atari_v17.bit.
+                   E' o main.bit (md5 2bc4d2723511cbe02a865de1fb8f4fae) comprimido com utils/rle.
+                   Build de 2026-10-15, semente 11, 96 MHz fecha por +0,021 ns (hold +0,453), 0 erros,
+                   DRC 0 erros, 5519 LUTs, 3136 slices, 2253 FFs, 16 de 16 BRAMs.  Nao foi testado em hardware.
+                   (sementes 9 13 7 17 10 6 nao fecharam; a 8 deu erro interno do ISE)
+                   PASSO 29 (relatorio atari_compare/out/passo29.txt), achado no teste da colecao:
+                     - CPU: opcodes nao documentados (LAX SAX DCP ISB SLO RLA SRE RRA ANC ALR ARR SBX ...,
+                       NOPs de 2/3 bytes); antes rodavam como NOP de 1 byte e muitos homebrews travavam.
+                     - leitura do TIA: bits 5..0 = ultimo byte do barramento, como no console (antes 0).
+                     - versao em $2027 (leitura) = $0A.  Paletas, buffer e registradores iguais ao 28b.
+- fpga_atari_p31.bit : VM de build, sd2snes_atari (na VM de build)/fpga_atari_v18.bit (feito na copia exp30a/).
+                   E' o main.bit (md5 a9b6db5c158175e03b8d5f903bd6a7d2) comprimido com utils/rle.
+                   Build de 2026-10-16, semente 13, 96 MHz fecha por +0,013 ns (hold +0,433), 0 erros,
+                   DRC 0 erros, 5587 LUTs, 3155 slices (88%), 2337 FFs, 16 de 16 BRAMs.  Nao foi testado em hardware.
+                   PASSO 31 (relatorios atari_compare/out/passo30_B.txt e passo31.txt):
+                     - gravador de video com um estagio a mais: cada pixel guarda a cor que tinha quando o TIA
+                       o desenhou (antes as 4 cores da linha eram lidas no pixel 16).  Corrige a cor trocada no
+                       meio da linha quando a linha tem ate' 4 cores: Checkers, barras do H.E.R.O. e do Seaquest.
+                       Linhas com mais de 4 cores continuam limitadas a 4.
+                     - versao em $2027 (leitura) = $0B.  CPU, paletas e registradores iguais ao passo 29.
+                   Volta atras: o fpga_atari.bit do passo 29 (ff0b729d...).
+- fpga_atari_v16b.bit : o bit do passo 28b (VM fpga_atari_v16b.bit), descrito abaixo.
+                   E' o main.bit (md5 a9a2e65f5e6dafa5925971938e3e5d69) comprimido com utils/rle.
+                   Build de 2026-10-14, semente 9, 96 MHz fecha por +0,114 ns (hold +0,433), 0 erros,
+                   DRC 0 erros, 5232 LUTs, 3005 slices, 2258 FFs, 16 de 16 BRAMs.
+                   Nao foi testado em hardware.
+                   PASSO 28b: igual ao passo 28, so' a cor $00 da Color-2 passa a preto puro ($0000; era
+                   #101010), como o apagamento (VBLANK e fora da janela).
+                   PASSO 28, 4 paletas (relatorio atari_compare/out/passo28.txt):
+                     - registrador de escrita $2028, bits 1:0: 0 Color-1 (padrao), 1 Color-2, 2 Color-3,
+                       3 Black/White (os 8 cinzas de Color-1 pela luminancia).  A escolha e' travada quando
+                       o VSYNC termina: uma troca no meio do quadro so' vale no quadro seguinte.
+                     - o seletor fica no registrador tbw (cor calculada 1 pixel antes), fora do caminho
+                       de 1 clock do TIA ao fb_wdata.
+                     - versao em $2027 (leitura) = $09.  Buffer, tabelas e os outros registradores iguais:
+                       player v7 e firmware do passo 25 servem sem mudanca (o player v7 nao escreve $2028,
+                       entao fica em Color-1).
+- fpga_atari_v16.bit : o bit do passo 28 (Color-2 com $00 = #101010).  VM, fpga_atari_v16.bit; main.bit md5
+                   3d23c4c7310b6edb29baacc339caf4e8; semente 9, +0,114 ns (sementes 13 7 17 10 6 8 nao fecharam).
+- fpga_atari_v15.bit : o bit do passo 27 (versao $08, uma paleta; nao testado no console).  VM,
+                   fpga_atari_v15.bit.  E' o main.bit (md5 a2ca10ae83333b95114424c9d4eb1f4f) comprimido com
+                   utils/rle.  Semente 13, +0,012 ns, 4996 LUTs, 2931 slices.  Paleta nova (as duas pernas do
+                   Decathlon no mesmo tom) e a palavra de cor registrada um pixel antes (tbw).
+- fpga_atari_v14.bit : o bit do passo 26 (testado no console: Crackpots, Decathlon). VM, fpga_atari_v14.bit.
                    E' o main.bit (md5 65e255cc360ef326dc6843b76becc88f) comprimido com
                    utils/rle. Build de 2026-10-14 com semente de placement 7, -bp desligado,
                    o clock de 96 MHz fecha por +0,065 ns, 0 erros, 4965 LUTs, 2897 slices,
                    2235 FFs, 16 de 16 BRAMs.  Testado no console em 2026-10-14 (Crackpots, Decathlon).
                    (sementes 17, 10 e 6 nao fecharam: -0,168 / -0,226 / -0,517 ns)
-                   PASSO 26, so' no core (relatorio ~/projetos/atari_compare/out/passo26.txt):
+                   PASSO 26, so' no core (relatorio atari_compare/out/passo26.txt):
                      - BOLA: RESBL no HBLANK depois de um HMOVE na mesma linha poe a bola no
                        pixel 3 (antes 2), como no ALE.  Some a linha da coluna 159 do Crackpots
                        e os pixels da bola do Decathlon (0 pixels x ALE em simulacao).
                      - versao em $2027 (leitura) = $07.  Buffer, tabelas e registradores iguais:
                        o player v7 e o firmware do passo 25 servem sem mudanca.
                      - a alocacao das 4 cores por linha (Checkers) NAO entrou: nao fecha o timing
-                       (-1,5 a -2,6 ns); guardada no repositorio em fpga/experimental/p26B/.
+                       (-1,5 a -2,6 ns); guardada em atari_core/proto_p26B/.
 - fpga_atari_v13.bit : o bit do passo 24 (o que estava no cartao).  VM, fpga_atari_v13.bit.
                    E' o main.bit (md5 8c96f945c0c50d2401c6d67940c35ab8) comprimido com
                    utils/rle. Build de 2026-10-13 com semente de placement 17, -bp desligado,
@@ -75,7 +132,7 @@ Origem
                        o player v7 serve sem mudanca.
                    O bit do passo 23 (md5 5ba5631572bb6352c2239557e13ff12d, main.bit
                    22effaaeb650d582bc3c7275268e3ba7, semente 10, +0,034 ns, 4982 LUTs, 2889
-                   slices, versao $05) esta' em ~/projetos/atari_core/bak_v12/fpga_atari_v12.bit.
+                   slices, versao $05) esta' em atari_core/bak_v12/fpga_atari_v12.bit.
                    PASSO 23, COR TROCADA NO MEIO DA LINHA: as 4 cores da linha continuam
                    amostradas no pixel 16; do pixel 17 em diante, o pixel cuja fonte teve a
                    cor trocada depois da amostra recebe o menor indice cuja cor amostrada e'
@@ -90,14 +147,14 @@ Origem
                    o player v7 (atari_snes7.bin, md5 c89e847b9fab2aa53aade96387d4fbe2) serve.
                    O bit do passo 22 (md5 c4e5d085512ad4f7a4b35b9ee6310823, main.bit
                    6b1d83b88c55f9f91c06d90532eef87d, semente 6, +0,031 ns, 4982 LUTs, 2885
-                   slices, versao $04) esta' em ~/projetos/atari_core/bak_v11/fpga_atari_v11.bit.
+                   slices, versao $04) esta' em atari_core/bak_v11/fpga_atari_v11.bit.
                    PASSO 22, LARGURA 1:1: 1 pixel do Atari = 1 coluna do SNES (fim do
                    esticamento 5 -> 8).  Imagem nas colunas 48..207 (tiles 6..25 do mapa;
                    os tiles 0..5 e 26..31 = 0); janela por linha: esquerda 48 (56 com a
                    barra do HMOVE), direita 207.
                    O bit do passo 21b (esticado; md5 806c5e44ad4e94c38af70efb55654ed1,
                    main.bit 2d517fd1c777dd8468fc945097fa35bc, semente 6, +0,010 ns, 4969
-                   LUTs) esta' em ~/projetos/atari_core/bak_v10/fpga_atari_v10.bit.
+                   LUTs) esta' em atari_core/bak_v10/fpga_atari_v10.bit.
                    DESDE O PASSO 21b:
                      - DICIONARIO DE TILES: cada buffer traz cabecalho (+$0000, palavra 0 =
                        numero de tiles distintos), mapa de 28 x 32 entradas (+$0010) e a
@@ -175,7 +232,7 @@ Origem
 - atari_snes_v2.bin : player v2 de teste (atari_snes2.s), 5 linhas de diagnostico em
                    hexadecimal, sem video do Atari.
 - atari_snes_v1.bin : o player anterior (atari_snes.s), que so mostra as linhas 1 a 3.
-- firmware_p25.img : ~/projetos/atari_fw/firmware_p25.img (build de 2026-10-14, mesma arvore e mesma
+- firmware_p25.img : atari_fw/firmware_p25.img (build de 2026-10-14, mesma arvore e mesma
                    toolchain do firmware.img: arm-none-eabi-gcc 13.2.1, CONFIG=config-mk2).
                    PASSO 25: um .a26 de 8 KB com uma das assinaturas FE do Stella
                    (CartDetector::isProbablyFE) e sem "STA $1FF9"/"STA $FFF9" repetido passa
@@ -185,8 +242,8 @@ Origem
                    cartao).  O Space Shuttle desta colecao continua F8 (o Stella tambem da' F8).
                    Precisa do bit do passo 24 (o unico com mapper 5) e do player v7 (sem
                    mudanca).  Com o bit do passo 23 o Decathlon original continua sem rodar.
-                   Relatorio: ~/projetos/atari_compare/out/passo25.txt.
-- firmware.img   : ~/projetos/atari_fw/backup_antes_do_25/firmware.img (copia do firmware com o patch
+                   Relatorio: atari_compare/out/passo25.txt.
+- firmware.img   : atari_fw/backup_antes_do_25/firmware.img (copia do firmware com o patch
                    do Mk.II; base 1b5d9d79, CONFIG=config-mk2, arm-none-eabi-gcc 13.2.1).
                    Para um .a26 a mascara de ROM passa a ser de 4 MB: $70:8000-$FFFF
                    enxerga PSRAM 0x380000-0x387FFF; o player segue em $00:8000 e os

@@ -2,30 +2,25 @@
 
 ## Bugs abertos
 
-- **Checkers**: no console o tabuleiro azul não aparece (relato do usuário).
-  Em simulação são 982.260 pixels de cor errada em 85 quadros, em cada cenário
-  (parado e jogando): o jogo troca a cor de fundo depois do pixel 16, onde o
-  core lê as 4 cores da linha. Item B do Passo 26, ainda aberto (ver abaixo).
-- **Barras do H.E.R.O. (POWER) e do Seaquest (OXYGEN)**: no console o efeito
-  da barra existe (a parte vermelha, que é a gasta, aparece e encolhe a barra),
-  mas a cor da parte que resta (amarela no H.E.R.O., branca no Seaquest) não
-  aparece. Em simulação a linha inteira sai cinza: o jogo troca COLUPF no meio
-  da linha e todos os pixels da linha recebem o mesmo índice de tile (H.E.R.O.
-  32.450 / 31.545 e Seaquest 26.145 pixels de cor errada em 85 quadros). Como o
-  console mostra algo que a simulação não grava, o hardware grava índices
-  diferentes dos da simulação. Item aberto: ler a PSRAM no console para
-  descobrir o quê.
-- **Alocação das 4 cores por linha (item B do Passo 26)**: cada pixel pega o
-  índice que já tem a sua cor final, senão um índice livre, e as cores da linha
-  vão para a tabela durante a linha seguinte. Em simulação dá 0 pixels de cor
-  errada nos 11 jogos medidos (Checkers, H.E.R.O. e Seaquest inclusive), sem
-  descartes. Não fecha o timing: -2,614 ns (semente 17) e -1,536 ns (semente
-  10); o caminho pix_src (TIA) -> fb_wdata (gravador) não é relaxado e a
-  alocação põe 9 níveis de lógica nele. Proposta (não feita): registrar o pixel
-  do TIA e processá-lo num strobe atrasado ~13 clocks, num caminho relaxado. O
-  código está em [`fpga/experimental/p26B/`](../fpga/experimental/p26B/).
-- **Leituras do TIA**: os bits 5..0 voltam 0 em vez do último valor do
-  barramento.
+- **Linhas com mais de 4 cores**: o SNES recebe 4 cores por linha. Na
+  coleção, 7.142 das 1.429.995 linhas medidas (119 ROMs, quase todas demos de
+  cor) têm mais de 4. Opções estudadas (8 paletas por tile com HDMA, 16 cores
+  por linha): ganhariam de 25 a 41 ROMs, com player, gravador e orçamento de
+  DMA novos; não feitas.
+- **Superchip** (RAM de 128 bytes no cartucho): 114 arquivos da coleção. Os 16
+  BRAMs estão em uso; em LUT-RAM caberia, mas os slices estão em 88%.
+- **Mappers não suportados**: E0, E7, FA/12K, 64K, CV, UA, Supercharger.
+- **Imagem PAL**: passa das 224 linhas que o SNES mostra (115 ROMs da
+  coleção). O registrador de deslocamento (`$2026`) existe; falta o player
+  escolher o deslocamento por jogo.
+- **Diferença que cresce com o tempo** (~139 ROMs da coleção, ex.: Enduro,
+  Pitfall): parte é o estado da RAM ao ligar (aleatório no console); o resto
+  sem causa medida.
+- **TIA**: diferenças fixas em algumas linhas (barra do HMOVE, borda de sprite;
+  Robot Tank nas linhas 175-182), a estudar jogo a jogo.
+- **Timer do RIOT**: lê um a mais que o emulador logo depois da escrita. Um
+  protótipo um ciclo antes não mudou nenhum jogo; não aplicado.
+- **Rally X (2004, WIP)**: continua com tela preta; causa não medida.
 
 ## A confirmar no console (Passo 24/25)
 
@@ -47,8 +42,35 @@ foi usado no console: o Decathlon original abre com o firmware do Passo 25.
 - Genlock (elimina o quadro repetido a cada ~5,5 s).
 - Paleta PAL e autodetecção NTSC/PAL.
 - Deslocamento salvo por ROM.
-- Folga de timing: 0,024 ns no Passo 24, depois de 12 sementes. O caminho do
-  TIA até o gravador de vídeo está no limite.
+- Folga de timing: +0,013 ns no Passo 31 (semente 13). Qualquer mudança no
+  core pede uma nova varredura de sementes.
+
+## Corrigidos no Passo 31
+
+- **Cor trocada no meio da linha** (Checkers, barras POWER do H.E.R.O. e
+  OXYGEN do Seaquest): os 4 índices de cor de cada linha passam a ser
+  alocados conforme as cores aparecem, num strobe atrasado de 13 clocks (a
+  alocação do item B do Passo 26, que não fechava o timing, agora fecha:
+  +0,013 ns, semente 13). Em simulação: Checkers e H.E.R.O. iguais ao
+  emulador; no Seaquest o erro do gravador some (sobra uma diferença do TIA).
+  Na coleção: 349 ROMs a mais iguais ao emulador, nenhuma das 500 da amostra
+  que já davam iguais mudou. Versão `$0B`.
+- Player v13: X troca a paleta, Y o nível (Easy/Normal/Hard), aviso verde na
+  tela.
+
+## Corrigidos no Passo 29
+
+- **Opcodes não documentados do 6502** (antes NOP de 1 byte): validados com
+  ROMs de teste contra o emulador. Na coleção: 217 ROMs passaram a iguais, 427
+  melhoraram.
+- **Leitura do TIA**: os bits 5..0 são o último valor do barramento (antes 0).
+- Versão `$0A`.
+
+## Passos 27 e 28: paletas
+
+- Passo 27: paleta nova (a anterior desbotava os tons claros). Versão `$08`.
+- Passo 28: 4 paletas no registrador `$2028` (Color-1, Color-2, Color-3,
+  Black/White). Passo 28b: o `$00` da Color-2 virou preto puro. Versão `$09`.
 
 ## Corrigidos no Passo 26
 

@@ -1,8 +1,8 @@
 # Como o nosso player funciona e como foi criado (estado em 13/10/2026)
 
 ## 1. Visão geral: três camadas
-1. **Firmware do sd2snes (cópia patchada em ~/projetos/atari_fw).** Carrega a ROM do Atari, carrega o bit do FPGA e informa o tipo de cartucho (mapper) ao player pelos bytes $FFF0/$FFF1 da ROM do player (magic $A2). Hoje decide o mapper só pelo tamanho do arquivo (8 KB vira F8): por isso o Decathlon original (FE) não roda.
-2. **Core no FPGA Spartan-3 XC3S400 (~/projetos/atari_core).** Escrito do zero em Verilog: CPU 6507, TIA, RIOT, mappers. Roda a 96 MHz, monta cada quadro do Atari e o grava na PSRAM do cartucho. Também expõe uma janela de registradores em $2020-$202F para o SNES.
+1. **Firmware do sd2snes (cópia patchada em atari_fw).** Carrega a ROM do Atari, carrega o bit do FPGA e informa o tipo de cartucho (mapper) ao player pelos bytes $FFF0/$FFF1 da ROM do player (magic $A2). Hoje decide o mapper só pelo tamanho do arquivo (8 KB vira F8): por isso o Decathlon original (FE) não roda.
+2. **Core no FPGA Spartan-3 XC3S400 (atari_core).** Escrito do zero em Verilog: CPU 6507, TIA, RIOT, mappers. Roda a 96 MHz, monta cada quadro do Atari e o grava na PSRAM do cartucho. Também expõe uma janela de registradores em $2020-$202F para o SNES.
 3. **Player (65816, ca65, este chat).** É a "ROM" do SNES: 32 KB, LoROM. Mostra na tela do SNES o quadro que o core deixou na PSRAM, lê o controle e escreve os botões nos registradores do core. Não emula nada do Atari.
 
 Objetivo do projeto: usar o mínimo possível do FPGA e o esquema de controle do sd2snes. Por isso o player faz o que o SNES já faz bem (PPU, DMA, HDMA, joypad) e o FPGA só faz o que o SNES não consegue.
@@ -46,7 +46,7 @@ Objetivo do projeto: usar o mínimo possível do FPGA e o esquema de controle do
 - **Divisão de trabalho.** O Code (Claude Code, no WSL) faz o FPGA e o firmware, mede e grava relatórios em arquivos; este chat escreve o player em ca65, testa no emulador e guia o usuário na instalação. O usuário testa no hardware (SNES, sd2snes Mk.II, OSSC e TV de tubo) e fecha o ciclo.
 - **Ferramentas do player.** ca65/ld65 com lorom.cfg, script fix_snes_checksum.py, um emulador 65816 próprio em Python (emu65816.py) com testes por versão (test3*.py, test4.py, test5.py, test6.py, test7.py) que simulam a PSRAM de 3 bancos, os registradores do core e o joypad, e verificam as tabelas HDMA, a trava, as DMAs, os controles e o reset.
 - **Armadilhas já pagas.** ca65 não acompanha o tamanho de A/X através de jsr/rts (`.a8`/`.a16` precisam ser restaurados); o emulador não tinha o opcode `lda [dp]` (acrescentado); os símbolos precisam ser copiados para o arquivo que o harness lê.
-- **Regras de trabalho.** Os originais nunca mudam (clone ~/projetos/sd2snes, HEAD 1b5d9d79). Arquivos novos. Backup antes de gravar no cartão (G: = /mnt/g/sd2snes). Instalação um comando por vez, com cópia e conferência de md5.
+- **Regras de trabalho.** Os originais nunca mudam (clone sd2snes, HEAD 1b5d9d79). Arquivos novos. Backup antes de gravar no cartão (cartão = <cartão>/sd2snes). Instalação um comando por vez, com cópia e conferência de md5.
 
 ## 7. Histórico resumido
 - **v3 (várias letras, até v3x):** primeiro player estável, a 30 Hz, com a imagem de 160 de 256 colunas e controles de enquadramento. Fallback antigo: v3t (md5 e1bcce6b…).

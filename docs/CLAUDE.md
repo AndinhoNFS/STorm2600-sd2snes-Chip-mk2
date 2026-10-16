@@ -5,7 +5,7 @@ Core escrito do zero (sem copiar o core do fork nem do MiSTer): m6507, riot6532,
 tia, tia_audio, a26_core, a26_vidwr, a26_tdict, a26_mem, a26_regs, a26_top, a26_i2s.
 
 ## Regras
-- NUNCA editar ~/projetos/sd2snes (clone git original). Só ler.
+- NUNCA editar sd2snes (clone git original). Só ler.
 - Tudo novo vai em arquivos novos. Mostrar diff antes de aplicar mudanças no shell.
 - Compilar do shell só em cópia limpa (sd2snes_pristine, feita com git archive).
 - XST do ISE rejeita nomes que diferem só por maiúscula no mesmo módulo.
@@ -27,14 +27,22 @@ make_atari_shell.py gera verilog/sd2snes_atari/ dentro de uma cópia limpa do sd
 (troca dma->a26_top e dac->a26_i2s no main.v, stubs para sfxdma srtc rtc msu ctx bsx cheat,
 Makefile, ucf.extra, .xise). Pasta pristine:
 "<pasta-do-projeto>/Projeto_Atari2600/sd2snes_pristine"
-Build (na VM CentOS, ~/pristine/verilog/sd2snes_atari): source /opt/Xilinx/14.7/ISE_DS/settings64.sh; make mk2
-VM vê a mesma pasta em /mnt/hgfs/ProjetoAtari/Projeto_Atari2600
+Build (na VM CentOS, sd2snes_atari (na VM de build)): source /opt/Xilinx/14.7/ISE_DS/settings64.sh; make mk2
+VM vê a mesma pasta em <pasta compartilhada com a VM>
 
 ## Números medidos
 - Shell original (HEAD 1b5d9d79): 5753 LUTs, 16/16 BRAM, timing de 96 MHz fecha por 0.013 ns.
 - Core Atari isolado (XST): 2319 LUTs, 1 BRAM. CPU m6507 = 1257 LUTs (candidato a reescrita).
 - Meta: shell podado + core ~4900 LUTs (~68%).
-- Shell Atari (build de 2026-10-13, passo 24: atraso de escrita de PF e de GRP, mapper FE; semente 17, -bp desligado):
+- Shell Atari (build de 2026-10-14, passo 26: só a bola, versão $07; semente 7, -bp desligado):
+  4965 LUTs, 2897 slices, 2235 FFs, 16/16 BRAM, 96 MHz fecha por +0,065 ns (hold +0,433), 0 erros, DRC 0 erros.
+  main.bit md5 65e255cc360ef326dc6843b76becc88f; fpga_atari.bit md5 7d19e73ad27b7a03e51e2fe0947b663a
+  (120807 bytes). Na VM: fpga_atari_v14.bit, main_v14.bit, sweep15/ (17 -0,168; 10 -0,226; 6 -0,517; 7 +0,065).
+  As falhas da semente 17 eram da lógica base do sd2snes (SNES_ADDRr -> r2100_bright, MCU_DINr).
+  O writer B (alocação das cores) deu -2,614 (17) e -1,536 ns (10), sweep14: caminho pix_src (u_tia) ->
+  fb_wdata (vid), 11,946 ns em 9 níveis. core -> vid NÃO é relaxado no ucf.extra: toda lógica nova entre
+  as saídas do TIA e os registradores do vid tem de caber em 1 clock de 96 MHz.
+- Shell Atari do passo 24 (build de 2026-10-13: atraso de escrita de PF e de GRP, mapper FE; semente 17, -bp desligado):
   5003 LUTs (69%), 2875 slices (80%), 2260 FFs, 16/16 BRAM, o clock de 96 MHz fecha por +0,024 ns,
   0 erros (map, par, DRC do bitgen). main.bit md5 8c96f945c0c50d2401c6d67940c35ab8;
   fpga_atari.bit md5 473215f082acd657de7f586d61e5d214 (121293 bytes). Na VM: fpga_atari_v13.bit, main_v13.bit.
@@ -63,7 +71,7 @@ VM vê a mesma pasta em /mnt/hgfs/ProjetoAtari/Projeto_Atari2600
 
 ## Estado
 Simulação: tudo passa. Build do shell no ISE fecha timing e gera main.bit e fpga_atari.bit
-(utils/rle compilado em ~/pristine/utils na VM).
+(utils/rle compilado em utils/ do sd2snes (na VM de build) na VM).
 O gerador make_atari_shell.py grava no .xise: semente de placement 17 (PLACER_SEED, map/par -t)
 e -bp desligado ("Map Slice Logic into Unused Block RAMs" = false); o ucf.extra tem as
 exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
@@ -79,7 +87,7 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   cada, até 512; tabelas de HDMA por linha em BGR555 (ROM de 128 cores em a26_vidwr.v, cópia
   em a26_bgr555.hex): canal k em +$4000 + k*$400, 4 bytes por linha (k, k, cor), entrada 224
   preta; janela em +$5000, 2 bytes por linha (esquerda 48, ou 56 com a barra do HMOVE; direita
-  207), entrada 224 = 0, 255. Resumo em LAYOUT_BUFFER.txt (aqui e em ~/projetos/atari_deploy).
+  207), entrada 224 = 0, 255. Resumo em LAYOUT_BUFFER.txt (aqui e em atari_deploy).
 - Dicionário de tiles (a26_tdict.v, instância snes_a26/dict, entre a26_vidwr e a26_mem; roda a
   96 MHz, FORA dos grupos multiciclo do ucf.extra: toda saída de BRAM passa por mais um
   registrador). O a26_vidwr continua emitindo as palavras de tile ({buffer, 0, r, c, linha});
@@ -96,7 +104,7 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   as palavras de tabela do a26_vidwr têm prioridade. Leitura: reg 13 = descartes, reg 14/15 =
   nº de tiles do último quadro, versão (reg 7) = 6 (5 no passo 23, 4 no 22, 3 no 21b).
   Medido com a largura 1:1 e a regra de cor (passo 23): no máximo 90 tiles distintos por quadro
-  em seis jogos (106 no arranque do Enduro); ~/projetos/atari_compare/out/tiles/report.txt.
+  em seis jogos (106 no arranque do Enduro); atari_compare/out/tiles/report.txt.
 - Largura 1:1 (passo 22): 1 pixel do Atari = 1 coluna do SNES, sem esticar. Os 160 pixels ficam
   nas colunas 48..207: tiles 6..25 do mapa de 32 colunas (pixels 8(c-6)..8(c-6)+7); os tiles
   0..5 e 26..31 são gravados como zero pelo a26_vidwr (12 palavras zero por linha), então o
@@ -146,7 +154,7 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   à esquerda do ALE (HMOVE é aplicado de uma vez). Bits 5..0 das leituras do TIA continuam 0.
   (Errata do Diagnóstico 4: o ALE só congelava por causa do alias pitfall.bin; com riverraid.bin
   ele roda o Decathlon original como FE e serve de referência. Ver out/diag4.txt.)
-- Passo 25 (só firmware, ~/projetos/atari_fw; relatório atari_compare/out/passo25.txt): a26_decide()
+- Passo 25 (só firmware, atari_fw; relatório atari_compare/out/passo25.txt): a26_decide()
   em src/atari.c dá A26_BS_FE = 5 a um .a26 de 8 KB com uma das 5 assinaturas de
   CartDetector::isProbablyFE do Stella e sem "STA $1FF9"/"STA $FFF9" duas vezes (o "!f8" do Stella),
   depois das recusas 3F/UA e sem indício de Superchip; só com CONFIG_MK2 (A26_HAVE_FE em atari.h).
@@ -162,6 +170,46 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   firmware_p25.img; sobram 2-3 pixels da bola (defeito A do Diagnóstico 4, item A do passo 26).
   Robot Tank e Thwocker passam a FE mas NÃO foram testados no console (só simulação).
   Repositório: firmware/mk2_atari.patch (5 arquivos contra 1b5d9d79) e sdcard/sd2snes/firmware.img.
+- Passo 26 (relatório atari_compare/out/passo26.txt), versão (reg 7) = 7:
+  (A) tia.v, RESBL no HBLANK: posição 3 se hmove_blank (HMOVE já dado nesse HBLANK), senão 2. Crackpots e
+      Decathlon com 0 pixels x ALE na bola; outros 9 jogos sem mudança. Teste novo em tb_tia.v.
+  (B) a26_vidwr.v com alocação das 4 cores por linha (protótipo E do diagnóstico 4): 0 pixels de cor errada
+      nos 11 jogos em simulação, mas não fecha o timing (ver acima). NÃO está no bit: guardado em
+      proto_p26B/ (writer + tb_a26_vidwr.v com modelo da alocação e quadro 50 com cor nova no meio da linha).
+      Para fechar: registrar o pixel do TIA no pix_stb e processar num strobe atrasado >= 13 clk (relaxado).
+  Barras POWER (H.E.R.O.) e OXYGEN (Seaquest): no RTL a linha inteira tem o mesmo índice (sai cinza); no
+  console a parte vermelha (gasta) aparece e encolhe, mas a cor da parte que resta não. O hardware grava
+  índices que a simulação não grava; item aberto: ler a PSRAM no console.
+  Console (usuário, 2026-10-14) com o bit 7d19e73a ($07): Crackpots e Decathlon OK (item A confirmado).
+- Passo 27 (relatório atari_compare/out/passo27.txt), versão (reg 7) = 8: uma paleta nova, canal
+  round(c*31/255). A paleta antiga (= snes/palette_ntsc.inc) desbotava os claros ($4E quase branco). Só trocar
+  a ROM piorou o timing (-1,2 a -2,4 ns): a ROM entra no mux do fb_wdata. Solução: tbw = palavra de cor do
+  próximo slot registrada um pixel antes. Bit: semente 13, +0,012 ns, md5 db232e03c9e9e91921511ff01b9c7efc
+  (VM fpga_atari_v15.bit). Variante com a palavra inteira do slot pré-calculada em proto_p27_tbw2/ (passa nos
+  testes; síntese interrompida, não usada no bit). Não testado no console.
+- Passo 28 (relatório atari_compare/out/passo28.txt), versão (reg 7) = 9: 4 paletas. Escrita reg 8 ($2028)
+  bits 1:0 = 0 Color-1 (padrão), 1 Color-2, 2 Color-3, 3 Black/White (os 8 cinzas de Color-1 por c[2:0]).
+  a26_regs r_pal -> a26_vidwr pal_f, travado no f_start junto com yofs_r (troca no meio do quadro só vale no
+  seguinte); função pal_bgr(pal_f, tb_c) só no registrador tbw (grupo a26_slow_vid, 125 ns). Tabelas em
+  a26_pal4.hex (paleta p em 128*p + c); a26_bgr555.hex = Color-1. Nomes das paletas: só Color-1/2/3 e
+  Black/White, sem nomes de origem no código, docs ou tela. Passo 28b: Color-2 $00 = $0000 (era #101010), igual
+  ao apagamento. Bit 28b: semente 9, +0,114 ns, 5232 LUTs, 3005 slices, md5 3cead098fd77f98321fb0a34b06913c6
+  (VM fpga_atari_v16b.bit; o do 28 = 6d3cf916..., fpga_atari_v16.bit). O player v7 não escreve $2028. Não testado no console.
+- Passo 29 (relatório atari_compare/out/passo29.txt; teste da coleção em atari_compare/out/colecao/), versão 10 ($0A):
+  m6507 com os opcodes não documentados (antes NOP de 1 byte; validado contra o ALE com ROM de teste:
+  out/colecao/proto/illrom.py) e leitura do TIA com D5..D0 = último byte do barramento (a26_core last_bus;
+  bus.a26). tb_a26_sys/top esperam INPT4 = $8C. Bit: semente 11, +0,021 ns, 5519 LUTs, 3136 slices (87%),
+  md5 ff0b729d1dba3ef668935af413f321c5 (VM fpga_atari_v17.bit). Não testado no console.
+  NÃO aplicado: RIOT um ciclo antes (out/colecao/proto/riot6532.v: 67/80 leituras = ALE, mas nenhum jogo mudou).
+- Passo 31 (relatórios atari_compare/out/passo30_B.txt e passo31.txt), versão 11 ($0B): a26_vidwr com a alocação
+  das 4 cores por linha (item B do Passo 26) num strobe atrasado: cx/cvis/csrc/ccol/cvb registrados no pix_stb,
+  dsh = pix_stb atrasado DLY = 13 clk e vsh = VSYNC atrasado (SHREG_EXTRACT = "NO"; no ucf.extra, a26_fast, gerado
+  pelo make_atari_shell.py). Cores da linha escritas na linha seguinte (clp). Corrige a cor trocada no meio da linha
+  em linhas com até 4 cores: na coleção 349 ROMs a mais ficam OK (Checkers e H.E.R.O. OK; Seaquest sem erro do
+  gravador). Bit: semente 13 (PLACER_SEED do script), +0,013 ns, 5587 LUTs, 3155 slices (88%), 2337 FFs,
+  md5 5bbcf7b2be8815e326de021119af63bf (VM fpga_atari_v18.bit; feito em exp30a/, refeito em rep31/ a partir do
+  make_atari_shell.py: igual menos os 5 bytes da hora no cabeçalho; tail -c +101 | md5sum = d713e40a...).
+  Usado com o player v13 (atari_deploy/atari_snes13.bin, 8735f54a...: X paleta, Y nível).
 - Três buffers com trava: R0 = bits 1:0 = N (buffer com o quadro completo mais recente), os
   demais bits 0. Reg 7 de escrita = trava (bit 7 válida, bits 1:0 = buffer). Ao fim do quadro
   N = W; o novo W só é escolhido na primeira linha gravada do quadro seguinte: diferente de N
@@ -182,16 +230,17 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
   sim/tb_full.v do atari_compare (a26_top inteiro na razão real de clock).
 - RIOT: o primeiro decremento do timer vem no ciclo seguinte à escrita (modelo do Stella).
   Antes vinha um intervalo depois e os jogos geravam 264 linhas; agora 262 (59736 colour
-  clocks = 16688 us = 59,92 Hz) nos seis jogos de ~/projetos/atari_compare.
-- ucf.extra cita por nome snes_a26/vid/fb_wr, vsync_d e pub_pend: esses registradores precisam
-  continuar existindo em a26_vidwr.v. O que muda em a26_vidwr só muda em pix_stb (exceção
+  clocks = 16688 us = 59,92 Hz) nos seis jogos de atari_compare.
+- ucf.extra cita por nome snes_a26/vid/fb_wr, vsync_d, pub_pend, dsh* e vsh*: esses registradores precisam
+  continuar existindo em a26_vidwr.v. O que muda em a26_vidwr só muda no strobe atrasado dstb (exceção
   multiciclo); vsync, pub_pend e a trava só passam por poucas portas antes de um registrador.
 - TIA: jogadores com NUSIZ 5 (duplo) e 7 (quádruplo) começam 1 pixel depois dos de largura
-  normal; medido contra o ALE em ~/projetos/atari_compare/out/nusiz/report.txt.
+  normal; medido contra o ALE em atari_compare/out/nusiz/report.txt.
 - Janela $2020: reg 3 = run (bit 0), mapper (bits 3:1), pausa (bit 4: segura o colour clock,
   sem reset); reg 6 = deslocamento vertical; reg 7 = trava (ver acima).
-- a26_vidwr amostra as 4 cores da linha no pixel 16 (jogos gravam COLUPx até o pixel 7).
-- Comparação com emulador: ~/projetos/atari_compare (ALE x núcleo no Verilator). Com
+- a26_vidwr: até o Passo 29 amostrava as 4 cores da linha no pixel 16; desde o Passo 31 aloca os 4 índices
+  conforme as cores chegam (ver Passo 31).
+- Comparação com emulador: atari_compare (ALE x núcleo no Verilator). Com
   hs = hcount + 1 os sprites batem com o emulador; hs = hcount os deixa 1 px à esquerda.
 - TIA: RESPx/RESMx/RESBL usam hs = hcount + 1 (o clock em que o strobe passa a valer);
   com hs = hcount - 2 os sprites saíam 3 pixels à esquerda do playfield no hardware.
@@ -201,8 +250,10 @@ exceções multiciclo TS_a26_slow, TS_a26_vid, TS_a26_riot e TS_a26_rom.
 - O make mk2 pode refazer a síntese mesmo sem mudança (make -n mostra rm -f main.ngc);
   para só regerar o fpga_atari.bit, rodar ../../utils/rle main.bit fpga_atari.bit.
 Fontes anteriores ao passo 20 em bak_v8/, ao passo 21b em bak_v9/, ao passo 22 em bak_v10/ (com o bit do 21b),
-ao passo 23 em bak_v11/ (com o bit do 22), ao passo 24 em bak_v12/ (com o bit do 23) e em bak_v13_pre/ (os mesmos
+ao passo 23 em bak_v11/ (com o bit do 22), ao passo 26 em bak_v13/ (com o bit do 24), ao passo 24 em bak_v12/ (com o bit do 23) e em bak_v13_pre/ (os mesmos
 fontes, sem o bit). bak_v12_pre/ = os fontes do passo 23 antes da síntese dele.
+Depois: bak_v14/ = passo 26 (antes do 27), bak_v15/ = 27, bak_v16/ = 28, bak_v17/ = 28b, bak_v18/ = 29
+(antes do 31), cada um com o bit correspondente e MD5SUMS.txt.
 O bit do passo 23 foi testado em hardware pelo usuário (H.E.R.O., Seaquest, Decathlon: Diagnóstico 3).
 O bit do passo 24 e o firmware do passo 25 foram usados no console pelo usuário em 2026-10-14: Decathlon
 original abre (2-3 pixels da bola sobram); barras POWER (H.E.R.O.) e OXYGEN (Seaquest): o efeito da barra
@@ -211,8 +262,8 @@ Pendente: player 65816 no SNES (para o layout com dicionário), firmware ARM (.a
 reais, opcodes não documentados.
 
 ## Build na VM por SSH
-- Acesso: `ssh storm-ise147 '<comando>'` (chave já configurada, sem senha).
-- Rodar o build: ssh storm-ise147 'bash -lc "source /opt/Xilinx/14.7/ISE_DS/settings64.sh && cd ~/pristine/verilog/sd2snes_atari && make mk2 > build.log 2>&1; grep -n \"^ERROR\" build.log | head -30"'
-- Trazer arquivos para a VM: copiar com scp para ~/pristine/verilog/sd2snes_atari/ (a_26_*.v, main.v, stubs).
-- Só mexer em ~/pristine/verilog/sd2snes_atari na VM. Não tocar em sd2snes_base nem em outras pastas.
+- Acesso: `ssh <VM de build> '<comando>'` (chave já configurada, sem senha).
+- Rodar o build: ssh <VM de build> 'bash -lc "source /opt/Xilinx/14.7/ISE_DS/settings64.sh && cd sd2snes_atari (na VM de build) && make mk2 > build.log 2>&1; grep -n \"^ERROR\" build.log | head -30"'
+- Trazer arquivos para a VM: copiar com scp para sd2snes_atari (na VM de build)/ (a_26_*.v, main.v, stubs).
+- Só mexer em sd2snes_atari (na VM de build) na VM. Não tocar em sd2snes_base nem em outras pastas.
 - O build leva 5 a 10 minutos: rodar em segundo plano e consultar o build.log.
