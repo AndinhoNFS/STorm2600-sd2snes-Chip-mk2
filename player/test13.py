@@ -1,7 +1,7 @@
 import sys,re,random
 sys.path.insert(0,'.')
 src=open('test3g.py').read().split("# convert with CROP")[0]
-src=src.replace("atari_snes3g.bin","atari_snes7.bin").replace("v==0x81","v==0x21")
+src=src.replace("atari_snes3g.bin","atari_snes13.bin").replace("v==0x81","v==0x21")
 src=src.replace("        return super().rd(a)","""        b=(a>>16)&0xFF; o=a&0xFFFF
         if 0x70<=b<=0x72 and o>=0x8000: return C2.fbs[b-0x70][o-0x8000]
         return super().rd(a)""",1).replace("class C2(CPU):","class C2(CPU):\n    fbs=[bytearray(0x8000) for _ in range(3)]",1)
@@ -98,13 +98,102 @@ pad(0,0x10); frame(); d=d_of(LW); assert d[0x2021][-1]==0xFE
 pad(0x80,0); frame(); d=d_of(LW); assert d[0x2022][-1]==2
 # pause
 pad(0x10,0); frame(); pad(0,0); frame(); print("pause",cpu.wram[0x5A],"reg3",[hex(v) for a,v in LW if a==0x2023][-1]); assert cpu.wram[0x5A]==1
-# reset combo: handler spins after writing $2A00 = $81
-pad(0x70,0x20); run_irq(0)
+
+# ---- v8: palette key X ----
+def frame(r0=0):
+    global LW
+    w1=run_irq(r0); w2=run_irq(r0); LW=w1+w2; return LW
+def regs(tag): return [v for a,v in LW if a==tag]
+WINB=0x2020
+pad(0x10,0); frame(); pad(0,0); frame()   # leave the pause of the v7 tests
+assert cpu.wram[0x5A]==0
+pad(0,0); frame(); frame()
+assert regs(0x2028)[-1]==0 and cpu.wram[0x6C]==0
+# X alone: PAL 0->1, name shown
+pad(0x40,0); frame()
+print("X: PAL",cpu.wram[0x6C],"TXTUP",cpu.wram[0x6E],"TXTCNT",cpu.wram[0x6D],"reg8",regs(0x2028),"212C",[hex(v) for v in regs(0x212C)])
+assert cpu.wram[0x6C]==1 and regs(0x2028)[-1]==1 and cpu.wram[0x6E]==1 and cpu.wram[0x6D]==149 and regs(0x212C)[-1]==0x03
+# the text row is uploaded at the next V=232 IRQ (phase 1)
+w=run_irq(0); d=d_of(w)
+print("row upload: vram",hex(d[0x2116][-1]|d[0x2117][-1]<<8),"src",hex(d[0x4302][-1]|d[0x4303][-1]<<8),"len",d[0x4305][-1]|d[0x4306][-1]<<8,"bank",d[0x4304][-1],"TXTUP",cpu.wram[0x6E])
+assert (d[0x2116][-1]|d[0x2117][-1]<<8)==0x1C00+26*32 and (d[0x4305][-1]|d[0x4306][-1]<<8)==64 and d[0x4304][-1]==0 and cpu.wram[0x6E]==0
+# the bytes at the DMA source are the "Color-2" row (palette 1) of font_txt.inc
+src=d[0x4302][-1]|d[0x4303][-1]<<8
+rom8=open('atari_snes13.bin','rb').read()
+rows=[l for l in open('font_txt.inc') if l.strip().startswith('.word')]
+exp=bytearray()
+for x in rows[1].split(';')[0].replace('.word','').split(','):
+    v=int(x.strip().replace('$',''),16); exp+=bytes([v&255,v>>8])
+assert rom8[src-0x8000:src-0x8000+64]==bytes(exp) and len(exp)==64
+print("row bytes at DMA source = Color-2 row")
+# holding X does not repeat
+for i in range(5): frame()
+assert cpu.wram[0x6C]==1
+# 4 presses wrap around: 1->2->3->0
+for want in (2,3,0,1):
+    pad(0,0); frame(); pad(0x40,0); frame(); assert cpu.wram[0x6C]==want and regs(0x2028)[-1]==want
+# name expires after TXTFR frames, then BG2 is off
+pad(0,0)
+for i in range(160): frame()
+assert regs(0x212C)[-1]==0x01 and cpu.wram[0x6D]==0
+print("name expires: 212C",hex(regs(0x212C)[-1]))
+# X with L, R or Select held does nothing
+cur=cpu.wram[0x6C]
+for l,h in ((0x60,0),(0x50,0),(0x40,0x20),(0x70,0)):
+    pad(0,0); frame(); pad(l,h); frame(); assert cpu.wram[0x6C]==cur,(hex(l),hex(h))
+print("X ignored with L/R/Select held")
+# ---- v12: Y = Easy -> Normal -> Hard ----
+rom12=open('atari_snes13.bin','rb').read()
+rows=[l for l in open('font_txt.inc') if l.strip().startswith('.word')]
+def rowbytes(i):
+    e=bytearray()
+    for x in rows[i].split(';')[0].replace('.word','').split(','):
+        v=int(x.strip().replace('$',''),16); e+=bytes([v&255,v>>8])
+    return bytes(e)
+def ypress():
+    pad(0,0); frame(); pad(0,0x40); frame()
+    d=d_of(LW); src=d[0x4302][-1]|d[0x4303][-1]<<8
+    return rom12[src-0x8000:src-0x8000+64], regs(0x2021)[-1]
+pad(0,0); frame(); frame()
+assert cpu.wram[0x75]==2 and regs(0x2021)[-1]&0xC0==0xC0       # start: Hard (both A)
+for name,idx,sw in (("Easy",4,0x3F),("Normal",5,0xBF),("Hard",6,0xFF),("Easy",4,0x3F)):
+    row,swb=ypress()
+    print("Y ->",name,"level",cpu.wram[0x75],"SWCHB",hex(swb),"name row ok",row==rowbytes(idx))
+    assert row==rowbytes(idx) and swb==sw and cpu.wram[0x6F]==idx and regs(0x212C)[-1]==3
+# held Y does not repeat
+for i in range(3): frame()
+assert cpu.wram[0x75]==0
+# Y ignored with Select / L / R / X held
+for l,h in ((0,0x60),(0x20,0x40),(0x10,0x40),(0x40,0x40)):
+    pad(0,0); frame(); pad(l,h); frame(); assert cpu.wram[0x75]==0,(hex(l),hex(h))
+print("Y ignored with Select/L/R/X")
+# Start (RESET) still clears bit 0 with Easy
+pad(0,0); frame()
+pad(0,0x10); frame(); assert regs(0x2021)[-1]==0x3E
+print("Start still clears bit 0 with Easy")
+pad(0,0); frame()
+# ---- v13: text palette rewritten every frame, after the DMAs ----
+ph1_seen=0
+for i in range(4):
+    w=run_irq(0)
+    if any(a==0x2121 and v==32 for a,v in w):
+        ph1_seen+=1
+        idx=max(k for k,(a,v) in enumerate(w) if a==0x420B)
+        pk=[k for k,(a,v) in enumerate(w) if a==0x2121 and v==32][0]
+        assert pk>idx,"palette written before the last DMA"
+        assert [v for a,v in w if a==0x2122]==[0,0,0xE0,3,0xE0,3,0xE0,3]
+print("text palette refreshed in",ph1_seen,"of 4 IRQs (the ph1 ones), after the last DMA")
+assert ph1_seen==2
+# the d-pad and fire still work together with X
+pad(0xC0,0x08); frame(); d=d_of(LW); assert d[0x2022][-1]==2 and d[0x2020][-1]!=0xFF
+# reset combo still works
+pad(0x70,0x20)
 cpu.regs_read[0x2020]=0; cpu.writes.clear()
 ret=cpu.PC; cpu.E=0;cpu.M=1;cpu.XF=0
 cpu.push(0);cpu.push(ret>>8);cpu.push(ret&255);cpu.push(cpu.P()); cpu.PC=sym['Nmi']
 for _ in range(20000):
     cpu.step()
     if any(a==0x2A00 for a,v in cpu.writes): break
-print("reset combo writes $2A00:",[hex(v) for a,v in cpu.writes if a==0x2A00]); assert [v for a,v in cpu.writes if a==0x2A00]==[0x81]
-print("ALL OK")
+assert [v for a,v in cpu.writes if a==0x2A00]==[0x81]
+print("reset combo still writes $2A00 = $81")
+print("ALL OK v13")

@@ -1,4 +1,4 @@
-; atari_snes7.s -- Atari 2600 video + controls "player" for the sd2snes Mk.II (v7).
+; atari_snes13.s -- Atari 2600 video + controls "player" for the sd2snes Mk.II (v13).
 ; Written from scratch (65816, ca65).  SPDX-License-Identifier: GPL-2.0-or-later
 ;
 ; v6: tile-dictionary frames (FPGA Passo 21b).  The core sends only the DISTINCT 8x8 tiles
@@ -18,8 +18,18 @@
 ;   +$0800 tiles, 16 bytes each (2bpp)                     +$4000 + k*$400 colour k (4 bytes/line)
 ;   +$5000 window (2 bytes/line: left, right)              entry 224 of every table is black/default
 ;
+; v13: the text palette (CGRAM 32..35) is rewritten every frame at the end of the V=232 IRQ,
+;   i.e. in vertical blank when no HDMA runs, so a wrong colour cannot stay on screen.
+; v12: Y = level Easy -> Normal -> Hard (-> Easy ...), name on screen like the palettes.
+;   Easy = both difficulty switches B, Normal = left B + right A, Hard = both A.
+; v11: Y key.
+; v10: text only (no background), bright green.  v9: X ignored while paused.
+; v8: X = next colour palette (Color-1, Color-2, Color-3, Black/White).  The choice goes to core
+; register 8 ($2028, bits 1:0) every frame; the name is shown for ~2.5 s on BG2 (2bpp text,
+; font in VRAM $1000, map at $1C00, row 26, inside the 160-pixel colour window).
+;
 ; CONTROLS (SNES pad 1): d-pad = joystick, B or A = fire, Start = RESET, Select = SELECT,
-;   R = pause, L+R+Select+X = back to the menu.
+;   R = pause, X = next palette, Y = Easy/Normal/Hard, L+R+Select+X = back to the menu.
 
 .p816
 .a8
@@ -57,6 +67,15 @@ VOFF16 = $64                ; black lines above the picture (16-bit)
 LDN    = $66                ; 1 = L and Select held (fine adjust active)
 UDPREV = $67
 DIRTY  = $69
+XPREV  = $6B                ; X key state of the previous frame
+PAL    = $6C                ; palette 0..3 (core register 8)
+TXTCNT = $6D                ; frames left to show the palette name (BG2 on)
+TXTUP  = $6E                ; 1 = upload the name row to VRAM at the next V=232 IRQ
+TXTSEL = $6F                ; which name row to upload: 0..3 palettes, 4 Easy, 5 Normal, 6 Hard
+YPREV  = $74                ; Y key state of the previous frame
+DIFF   = $75                ; level 0 = Easy, 1 = Normal, 2 = Hard
+TXTROW = 26                 ; BG2 map row of the name
+TXTFR  = 150                ; frames the name stays on screen (~2.5 s)
 HP     = $70                ; long pointer to the locked buffer header
 
 .segment "CODE"
@@ -85,10 +104,16 @@ Reset:
     stz $2106
     lda #$18
     sta $2107               ; BG1 map at VRAM $1800, 32x32
-    stz $2108
+    lda #$1C
+    sta $2108               ; BG2 map at VRAM $1C00, 32x32
     stz $2109
     stz $210A
-    stz $210B               ; BG1 chr at $0000
+    lda #$10
+    sta $210B               ; BG1 chr at $0000, BG2 chr at $1000
+    stz $210F
+    stz $210F               ; BG2 scroll 0
+    stz $2110
+    stz $2110
     stz $210C
     stz $210D               ; BG1 H scroll 0
     stz $210D
@@ -134,8 +159,32 @@ Reset:
     lda #$01
     sta $420B
 
+    ; BG2 font -> VRAM $1000 (words), 2bpp tiles
+    ldx #$1000
+    stx $2116
+    lda #$01
+    sta $4300
+    lda #$18
+    sta $4301
+    ldx #FontTiles
+    stx $4302
+    stz $4304
+    ldx #FONTLEN
+    stx $4305
+    lda #$01
+    sta $420B
+    jsr TextPal
+
     ; variables
     stz PAUSE
+    stz XPREV
+    stz PAL
+    stz TXTCNT
+    stz TXTUP
+    stz TXTSEL
+    stz YPREV
+    lda #$02
+    sta DIFF                ; Hard = both switches in A (as before v11); the first Y gives Easy
     lda #16
     sta SKIPV               ; register 6 = SKIPV - 16 (signed offset of the first captured line)
     lda #VOFF0
@@ -317,6 +366,38 @@ Nmi:
 @skipt:
     sep #$20
     .a8
+    lda TXTUP
+    beq @notxt
+    stz TXTUP
+    ldx #$1C00+TXTROW*32
+    stx $2116
+    lda #$01
+    sta $4300
+    lda #$18
+    sta $4301
+    rep #$30
+    .a16
+    .i16
+    lda TXTSEL
+    and #$0007
+    asl
+    asl
+    asl
+    asl
+    asl
+    asl                     ; PAL * 64 bytes per name row
+    clc
+    adc #TxtRows
+    sta $4302
+    sep #$20
+    .a8
+    stz $4304
+    ldx #64
+    stx $4305
+    lda #$01
+    sta $420B
+@notxt:
+    jsr TextPal             ; vblank: HDMA is finished, safe to write CGRAM
     jmp @exit
 @ph2:
     stz PHASE
@@ -366,6 +447,87 @@ Nmi:
     lda TMP
     sta RPREV
 
+    ; X = next palette, only when L, R and Select are NOT held (that is the menu combo)
+    lda JOYL
+    and #$70
+    cmp #$40
+    bne @nox
+    lda JOYH
+    and #$20
+    bne @nox
+    lda #$01
+    bra @xk
+@nox:
+    lda #$00
+@xk:
+    sta TMP
+    lda XPREV
+    eor #$FF
+    and TMP                 ; 1 = X went down this frame
+    beq @noxe
+    lda PAUSE
+    bne @noxe               ; paused: the frame is frozen, a palette change would not show
+    lda PAL
+    clc
+    adc #$01
+    and #$03
+    sta PAL
+    sta TXTSEL
+    lda #TXTFR
+    sta TXTCNT
+    lda #$01
+    sta TXTUP
+@noxe:
+    lda TMP
+    sta XPREV
+    ; Y alone (not with L, R, X or Select) = toggle both difficulty switches
+    lda JOYL
+    and #$70
+    bne @noy
+    lda JOYH
+    and #$60
+    cmp #$40
+    bne @noy
+    lda #$01
+    bra @yk
+@noy:
+    lda #$00
+@yk:
+    sta TMP
+    lda YPREV
+    eor #$FF
+    and TMP
+    beq @noye
+    lda DIFF
+    clc
+    adc #$01
+    cmp #$03
+    bcc @lvok
+    lda #$00                ; Hard -> Easy
+@lvok:
+    sta DIFF
+    clc
+    adc #$04                ; name rows 4 Easy, 5 Normal, 6 Hard
+    sta TXTSEL
+    lda #TXTFR
+    sta TXTCNT
+    lda #$01
+    sta TXTUP
+@noye:
+    lda TMP
+    sta YPREV
+    lda PAL
+    sta WIN+8               ; core register 8: palette (latched by the core at the next VSYNC)
+    lda TXTCNT              ; BG2 (palette name) on while TXTCNT > 0
+    beq @txoff
+    dec TXTCNT
+    lda #$03
+    bra @txw
+@txoff:
+    lda #$01
+@txw:
+    sta $212C
+
     lda PAUSE               ; register 3: run + mapper + pause (bit 4)
     asl
     asl
@@ -408,6 +570,20 @@ Nmi:
     and #$FD
     sta TMP
 @nosel:
+    lda DIFF
+    cmp #$02
+    beq @hardsw             ; Hard: both switches A (bits 7 and 6 high)
+    cmp #$01
+    beq @normsw
+    lda TMP
+    and #$3F                ; Easy: both switches B
+    sta TMP
+    bra @hardsw
+@normsw:
+    lda TMP
+    and #$BF                ; Normal: left switch B (bit 6 low), right switch A
+    sta TMP
+@hardsw:
     lda TMP
     sta WIN+1               ; SWCHB
     lda JOYH
@@ -435,6 +611,24 @@ Nmi:
     sep #$20
     .a8
     rti
+
+; BG2 palette 0 = CGRAM 32..35: transparent, then bright green x3 (CGRAM has no HDMA user here)
+; a8 on entry and exit; call only in force blank / vertical blank (no HDMA writes to $2121).
+TextPal:
+    .a8
+    lda #32
+    sta $2121
+    stz $2122
+    stz $2122               ; colour 0 (transparent)
+    ldx #3
+@tp:
+    lda #$E0
+    sta $2122
+    lda #$03
+    sta $2122               ; colours 1..3: bright green $03E0
+    dex
+    bne @tp
+    rts
 
 ; ------------------------------------------------- HDMA pointer tables ----
 ; For every channel: [header, ptr lo, ptr hi] segments, then $00.
@@ -607,6 +801,7 @@ Dummy:
 .segment "RODATA"
 ZeroByte:
     .byte 0
+    .include "font_txt.inc"
 SpcProg:
     .byte $8F,$6C,$F2       ; mov $F2,#$6C   (DSP register FLG)
     .byte $8F,$20,$F3       ; mov $F3,#$20   (soft reset off, mute off, echo write off)
