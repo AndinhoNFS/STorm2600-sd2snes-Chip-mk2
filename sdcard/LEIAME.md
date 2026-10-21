@@ -4,12 +4,12 @@ Esta pasta tem só os 3 arquivos que o modo Atari acrescenta ou substitui na pas
 `/sd2snes/` do cartão do sd2snes (Mk.II). O resto da pasta (menu, demais cores
 do FPGA) vem da release do sd2snes (passo 1 da Instalação).
 
-Estado: **Passo 31**: bitstream do Passo 31 (versão `$0B`), player v13 e o firmware do Passo 25, que detecta o mapper FE.
+Estado: **Passo 33**, aprovado no console em 21/10/2026: bitstream do Passo 33 (versão `$0C`), player v14 e o firmware do Passo 25, que detecta o mapper FE.
 
 | Arquivo | Tamanho | md5 | O que é |
 |---|---|---|---|
-| `sd2snes/fpga_atari.bit` | 129099 | `5bbcf7b2be8815e326de021119af63bf` | bitstream do core do Atari (Passo 31: 4 paletas, opcodes não documentados, cor trocada no meio da linha) |
-| `sd2snes/atari_snes.bin` | 32768 | `8735f54a9edb3e8da8b32d25855a6c96` | player SNES v13 (X paleta, Y nível), já com o nome que o firmware abre |
+| `sd2snes/fpga_atari.bit` | 129575 | `87887c111a788c51805a644313b16808` | bitstream do core do Atari (Passo 33: TIA com objetos refeitos a partir da lógica do chip original, áudio I2S reescrito, Color-2 com a paleta PAL; mantém 4 paletas, opcodes não documentados e cor trocada no meio da linha) |
+| `sd2snes/atari_snes.bin` | 32768 | `9cbeeda15bec0d7cacd8fea0c9e4b48c` | player SNES v14 (X paleta, Y nível, R pausa com PAUSE na tela), já com o nome que o firmware abre |
 | `sd2snes/firmware.img` | 113323 | `f9634a74371d24489c0727ded05604b3` | firmware do Mk.II com o modo Atari e a detecção do FE (Passo 25, compilado em 2026-10-14; na Release `v0.7-p25` se chama `firmware_p25.img`) |
 
 Os mesmos md5 estão em `MD5SUMS`.
@@ -54,7 +54,10 @@ foi testado.
 ## Voltar ao bitstream e ao player anteriores
 
 O bitstream e o player são lidos do cartão a cada jogo, sem gravação em flash:
-basta trocar os arquivos. O conjunto anterior (Release `v0.7-p26`) é o
+basta trocar os arquivos. O conjunto do Passo 31 + player v13 (Release
+`v0.8-p31`) é `5bbcf7b2be8815e326de021119af63bf` (bitstream) com
+`8735f54a9edb3e8da8b32d25855a6c96` (player); os arquivos estão na Release e no
+histórico (`git show v0.8-p31:sdcard/sd2snes/fpga_atari.bit`). O conjunto mais antigo (Release `v0.7-p26`) é o
 bitstream do Passo 26 (120807 bytes, md5 `7d19e73ad27b7a03e51e2fe0947b663a`) com
 o player v7 (32768 bytes, md5 `c89e847b9fab2aa53aade96387d4fbe2`):
 
@@ -84,10 +87,11 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 
 ## Avisos
 
-- Passo 31 + player v13 aprovado pelo autor no console. Testados e OK:
+- Passo 33 + player v14 aprovados pelo autor no console em 21/10/2026.
+  Diferenças conhecidas: Ghoul (+1 pixel), Chess, Bobby Is Going Home e estalos
+  no Crackpots. Passo 31 + player v13 (aprovado antes): testados e OK:
   Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac-Man,
-  Boxing e Combat Tank AI. Aqua Hero e Bobby Is Going Home ainda aparecem com
-  defeito. Conjuntos anteriores: em 2026-10-14, com o bitstream do Passo 26, Crackpots e
+  Boxing e Combat Tank AI. Conjuntos anteriores: em 2026-10-14, com o bitstream do Passo 26, Crackpots e
   Decathlon OK.
 - O `firmware.img` é só para o Mk.II; o Mk.III não foi compilado com o modo
   Atari. Ele é uma cópia modificada do firmware do
