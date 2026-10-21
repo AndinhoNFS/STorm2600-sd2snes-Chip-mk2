@@ -42,6 +42,22 @@ Montar e testar o v14 é igual ao v13, trocando `13` por `14` nos comandos
 (`python3 gen_font14.py` regenera o `font_txt14.inc`). O teste termina com
 "ALL OK v14". md5 do `atari_snes14.bin`: `9cbeeda15bec0d7cacd8fea0c9e4b48c`.
 
+## Player v15 (em teste, só com o core do Passo 34)
+
+Arquivos: `atari_snes15.s`, `gen_font15.py`, `font_txt15.inc`, `test15.py`
+("ALL OK v15"). md5 do `atari_snes15.bin`: `2f1494cf27ebc8b7d68e4707c90b4bb3`.
+**Só funciona com o core do Passo 34** (232 linhas, mapa de 29 fileiras,
+tabelas de 233 entradas com a 232 preta). Com o core do P33 a imagem sai errada.
+
+- 232 linhas de imagem (TIA 27..258), com cada linha do TIA no mesmo lugar da
+  TV que antes (TIA 34 continua na linha V = 9).
+- Display ligado em V = 1 e force blank em V = 233: o tempo para a cópia do
+  mapa e dos tiles continua de 30 linhas, como no v14.
+- **L segurado:** mostra `N### L###` = o maior número de tiles por quadro e o
+  maior atraso da cópia, em linhas (quantas linhas do topo apareceram
+  atrasadas), desde que o L foi apertado. O L não é entrada do Atari.
+- PAUSE tem prioridade sobre o diagnóstico.
+
 ## Montar
 
 Precisa do cc65 (`ca65` e `ld65`). Nesta pasta:
