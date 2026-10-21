@@ -14,27 +14,26 @@ Projetos de base:
 
 | Item | Versão |
 |---|---|
-| Player SNES | v13 (`atari_snes.bin`, md5 `8735f54a…`) |
-| Bitstream FPGA | Passo 31 (`fpga_atari.bit`, md5 `5bbcf7b2…`), versão `$0B` em `$2027` |
+| Player SNES | v14 (`atari_snes.bin`, md5 `9cbeeda1…`) |
+| Bitstream FPGA | Passo 33 (`fpga_atari.bit`, md5 `87887c11…`), versão `$0C` em `$2027` |
 | Firmware | Passo 25 (`firmware.img`, md5 `f9634a74…`, detecta o mapper FE) |
-| Uso do FPGA | 5587/7168 LUTs, 3155/3584 slices (88%), 16/16 BRAM, folga +0,013 ns a 96 MHz |
+| Uso do FPGA | 5487/7168 LUTs, 3110/3584 slices (86%), 16/16 BRAM, folga +0,045 ns a 96 MHz |
 
-Passo 31 + player v13 aprovado pelo autor no console. Testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
+Passo 33 + player v14 aprovados pelo autor no console em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
 Histórico de testes no console: Passo 23 (Pitfall, River Raid, Pac‑Man, Enduro,
 Frostbite e Boxing corretos), Passos 24/25 (Decathlon original abre), Passo 26
 (Crackpots e Decathlon sem os pixels da bola fora do lugar).
 
-### Em teste: Passo 33, TIA a partir do hardware do chip
+### Passo 33 + player v14: aprovados no console em 21/10/2026
 
-Branch [`passo33`](../../tree/passo33), pré‑release `v0.9-p33`. Ainda não foi
-testado no console; a `main` e a pasta `sdcard/` continuam no Passo 31 até a
-aprovação.
+Branch [`passo33`](../../tree/passo33), release `v0.9-p33`.
 
-- **Objetos do TIA refeitos como no chip original** (P0, P1, M0, M1 e bola):
+- **Objetos do TIA refeitos a partir da lógica do chip original** (P0, P1, M0, M1 e bola):
   cada objeto tem o seu contador polinomial de 6 bits com relógio de duas fases,
   decodificações de START e HMOVE por pulsos extras com a trava "more‑motion",
   em vez de um contador binário reconstruído a partir do comportamento de
-  emuladores. As regras vêm das *Atari 2600 TIA Hardware Notes* de Andrew
+  emuladores. Feito a partir da lógica do chip original (notas do Towers,
+  esquemáticos e *Stella Programmer's Guide*); não foi medido num Atari. As regras vêm das *Atari 2600 TIA Hardware Notes* de Andrew
   Towers (tiradas dos esquemáticos do chip), dos esquemáticos do TIA e do
   *Stella Programmer's Guide*. Cada regra tem a fonte citada no código
   (`// FONTE:`); a especificação está em [`docs/tia_spec.md`](docs/tia_spec.md)
@@ -43,8 +42,13 @@ aprovação.
 - **Saída de áudio I2S reescrita** a partir da especificação do barramento I2S;
   forma de onda idêntica à do Passo 31 nos 4 pinos (0 diferenças em 400.000
   clocks).
-- **Color-2** passa a ser uma tabela nova de 128 cores; Color-1, Color-3 e
-  Black/White não mudam.
+- **Color-2** passa a ser a paleta PAL (tabela nova de 128 cores); Color-1,
+  Color-3 e Black/White não mudam.
+- **Player v14**: R pausa e o texto PAUSE fica fixo na tela enquanto o jogo está
+  pausado; some quando o R retoma. Fontes em `player/`.
+- **Diferenças conhecidas**: Ghoul (+1 pixel, caso `hm_stuck`), Chess (janela de
+  START do míssil logo depois de RESMx), Bobby Is Going Home e estalos no
+  Crackpots.
 - **ROMs de teste do TIA** em [`tools/tia_tests/`](tools/tia_tests/) (casos de
   canto de RESPx, RESMx, RESMP, NUSIZ e HMOVE), para rodar num Atari 2600 real
   e no core.
@@ -119,7 +123,7 @@ Detalhes em [docs/DESIGN.md](docs/DESIGN.md).
 | B / A | Fire (tiro) |
 | Start | RESET |
 | Select | SELECT |
-| R | Pausa |
+| R | Pausa (aparece PAUSE na tela; volta com R) |
 | X | Próxima paleta: Color-1 → Color-2 → Color-3 → Black/White |
 | Y | Nível: Easy → Normal → Hard (chaves de dificuldade do Atari) |
 | L+R+Select+X | Volta ao menu |
@@ -146,7 +150,7 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
   e se afasta do emulador depois de alguns segundos. Uma parte disso é o estado
   da RAM ao ligar (no console ele é aleatório, não é defeito); o resto não tem
   causa medida.
-- **Aqua Hero** e **Bobby Is Going Home** ainda aparecem com defeito no console.
+- **Bobby Is Going Home** ainda aparece com defeito no console; **Crackpots** tem estalos no áudio. Ghoul (+1 pixel) e Chess (janela de START do míssil) diferem do emulador de referência.
 - **Quadro repetido**: o Atari roda a 59,92 Hz e o SNES a 60,10 Hz; um quadro
   se repete a cada ~5,5 s.
 
@@ -154,7 +158,7 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
 
 ```
 fpga/    fontes do core (Verilog), testbenches e script que gera o projeto ISE
-player/  player SNES v13 (65816, ca65) e os testes dele
+player/  player SNES v14 e v13 (65816, ca65) e os testes deles
 tools/   scripts de comparação e medição contra o emulador (ALE)
 firmware/ mudanças no firmware do sd2snes para o modo Atari (patch)
 sdcard/  arquivos prontos para o cartão (bitstream, player e firmware)
