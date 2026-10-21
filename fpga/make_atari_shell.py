@@ -35,7 +35,7 @@ import sys
 REMOVE = ["sfxdma", "srtc", "rtc", "msu", "ctx", "bsx", "cheat"]
 KEEP = ["address.v", "clk_test.v", "dcm.v", "mcu_cmd.v", "sd_dma.v", "spi.v"]
 A26_FILES = ["a26_top.v", "a26_i2s.v", "a26_core.v", "a26_regs.v", "a26_mem.v",
-             "a26_vidwr.v", "a26_tdict.v", "m6507.v", "riot6532.v", "tia.v", "tia_audio.v"]
+             "a26_vidwr.v", "a26_tdict.v", "m6507.v", "riot6532.v", "tia.v", "tia_hc.v", "tia_obj.v", "tia_audio.v"]
 LOCAL_FILES = ["main.v"] + A26_FILES + ["stub_%s.v" % m for m in REMOVE]
 
 

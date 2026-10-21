@@ -296,6 +296,9 @@ module tb_tia;
     // HBLANK puts the ball on pixel 2; after one it is pixel 3 (as the ALE / Stella).
     wait_h(8'd10);
     clear_all;
+    // Passo 33: a ball that was never reset sits at pixel 0 and its pixel is still in flight across the HBLANK when the next RESBL lands
+    // (medida: powerup.s, tools/tia_tests), so the ball is first put in the middle of the line, as every game does at start-up.
+    tia_wr_at(8'd150, 6'h14, 8'h00); wait_h(8'd20);
     tia_wr(6'h1F, 8'h02);                         // ENABL, ball width 1, HMBL = 0
     wait_h(8'd2); tia_wr_at(8'd14, 6'h14, 8'h00); // RESBL in HBLANK, no HMOVE
     wait_h(8'd20); wait_h(8'd10);
