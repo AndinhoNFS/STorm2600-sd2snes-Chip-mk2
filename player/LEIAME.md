@@ -25,6 +25,23 @@ Substitui o player v7 (que está na tag `v0.7-p26`, pasta `snes/`).
   dentro da imagem (BG2).
 - A paleta do texto é regravada a cada quadro durante o apagamento vertical.
 
+## Player v14 (em teste)
+
+Arquivos novos, ao lado do v13: `atari_snes14.s`, `gen_font14.py`,
+`font_txt14.inc` e `test14.py`. O v13 continua montando idêntico.
+
+- **PAUSE na tela:** enquanto o jogo está pausado (R), aparece "PAUSE" no
+  mesmo lugar e na mesma cor dos nomes de paleta e nível, sem tempo limite. No
+  quadro em que o R retoma o jogo, o texto some.
+- Pausar apaga um nome de paleta ou nível que ainda estava na tela.
+- **Y** é ignorado durante a pausa, como o X já era.
+- O texto só liga depois que a linha nova chega à VRAM. Antes, o nome
+  anterior podia aparecer por um quadro.
+
+Montar e testar o v14 é igual ao v13, trocando `13` por `14` nos comandos
+(`python3 gen_font14.py` regenera o `font_txt14.inc`). O teste termina com
+"ALL OK v14". md5 do `atari_snes14.bin`: `9cbeeda15bec0d7cacd8fea0c9e4b48c`.
+
 ## Montar
 
 Precisa do cc65 (`ca65` e `ld65`). Nesta pasta:
