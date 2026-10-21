@@ -24,21 +24,21 @@
 //             each (no stretching); tiles 0..5 and 26..31 are written as zero
 //   colour tables, ready for the SNES HDMA (CGADD, CGADD, CGDATA, CGDATA):
 //             channel k (0 COLUBK, 1 COLUPF, 2 COLUP0, 3 COLUP1) at +$4000 + k*$400,
-//             line L (0..223) is 4 bytes at +4*L:
+//             line L (0..231) is 4 bytes at +4*L:
 //               word 0 = k | k<<8
 //               word 1 = the SNES BGR555 colour of the TIA colour (pal_bgr below, in the
 //                        palette pal_f taken when VSYNC ends),
 //                        $0000 on a line with VBLANK (or VSYNC) on
-//             entry L = 224 of every channel is black (word 1 = $0000)
+//             entry L = 232 of every channel is black (word 1 = $0000)
 //   window table +$5000 : line L is one word at +2*L = left | right<<8,
 //             left = 48, right = 207 (the 160 columns of the picture); left = 56 when the
 //             first 8 TIA pixels of the line were blanked (the HMOVE bar; the tiles hold
-//             colour source 0 there); entry 224 = 0 | 255<<8
-//   Entry 224 is rewritten every frame, one word per line on lines 0..8.
+//             colour source 0 there); entry 232 = 0 | 255<<8
+//   Entry 232 is rewritten every frame, one word per line on lines 0..8.
 //   The four colours of a line are taken at TIA pixel 16.  Per line the writes are:
 //   20 tile words on pixels 7, 15 .. 159 (tiles 6..25); 12 zero tile words on pixels
 //   5, 13 .. 93 (tiles 0..5 and 26..31); the 9 table words on pixels 19, 35 .. 147;
-//   on lines 0..8 one word of entry 224 on pixel 155.
+//   on lines 0..8 one word of entry 232 on pixel 155.
 //
 // FRAMING
 //   Lines are numbered from the end of VSYNC: line 0 is the scan
@@ -88,9 +88,9 @@
 
 module a26_vidwr #(
   parameter       DLY        = 13,       // clocks from pix_stb to the writer's strobe (>= 2, < pixel spacing)
-  parameter       MAXLINES   = 224,
+  parameter       MAXLINES   = 232,
   parameter       AUTO_LINES = 320,
-  parameter [8:0] YS0        = 9'd34      // first line of the window when yofs = 0
+  parameter [8:0] YS0        = 9'd27      // first line of the window when yofs = 0
 ) (
   input             clk,
   input             rst,

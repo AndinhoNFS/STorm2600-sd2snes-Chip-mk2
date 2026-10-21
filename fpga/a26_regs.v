@@ -30,7 +30,7 @@
 // READ
 //   0  bits 1:0 = buffer (0..2) holding the newest complete frame, bits 7:2 = 0
 //   1  completed-frame counter
-//   2  lines written in the last completed frame (224 = the whole window)
+//   2  lines written in the last completed frame (232 = the whole window)
 //   3  control register readback
 //   4..7  "A26" + version (4 = as 3, picture 160 columns wide 1:1), to detect the core
 //   8  CPU cycles that used a stale ROM byte (saturates at 255)
@@ -158,7 +158,7 @@ module a26_regs (
         4'd4: data_out_r <= 8'h41;             // 'A'
         4'd5: data_out_r <= 8'h32;             // '2'
         4'd6: data_out_r <= 8'h36;             // '6'
-        4'd7: data_out_r <= 8'h0C;             // version
+        4'd7: data_out_r <= 8'h0D;             // version
         4'd8: data_out_r <= miss_cnt;
         4'd9: data_out_r <= lat_max;
         4'd10: data_out_r <= {r_yofs[6], r_yofs};

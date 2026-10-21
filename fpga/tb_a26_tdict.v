@@ -133,7 +133,7 @@ module tb_a26_tdict;
       base = b * 16384; bad = 0; mx = 0;
       // brute force: distinct tiles as written (unwritten lines = zero), zero tile first
       seen[0] = 128'd0; ns = 1;
-      for (r = 0; r < 28; r = r + 1)
+      for (r = 0; r < 29; r = r + 1)
         for (c = 0; c < 32; c = c + 1) begin
           tv = 128'd0;
           for (l = 0; l < 8; l = l + 1) if (r * 8 + l < nlines) tv[l * 16 +: 16] = tword(tid(r, c), l);
@@ -143,7 +143,7 @@ module tb_a26_tdict;
         end
       if (nd >= 0 && ns !== nd) begin bad = bad + 1; $display("      (test pattern has %0d distinct tiles, wanted %0d)", ns, nd); end
       nd = ns;
-      for (r = 0; r < 28; r = r + 1)
+      for (r = 0; r < 29; r = r + 1)
         for (c = 0; c < 32; c = c + 1) begin
           e = mem[base + 8 + r * 32 + c];
           if (e > mx + 1) bad = bad + 1;
@@ -168,19 +168,19 @@ module tb_a26_tdict;
     rst = 0;
     repeat (1200) @(negedge clk);                 // the first clearing of the hash table
 
-    mode = 0; frame(2'd1, 224, 3000);
-    check(2'd1, 224, 512, "512 distinct tiles (full dictionary)");
+    mode = 0; frame(2'd1, 232, 3000);
+    check(2'd1, 232, 512, "512 distinct tiles (full dictionary)");
 
-    mode = 1; frame(2'd2, 224, 3000);
+    mode = 1; frame(2'd2, 232, 3000);
     if (eng_ovf !== 1'b1) begin errs = errs + 1; $display("FAIL  513 distinct tiles: no overflow"); end
     else $display("ok    513 distinct tiles: overflow flagged, frame acknowledged");
 
-    mode = 2; frame(2'd0, 224, 3000);
-    check(2'd0, 224, 130, "tiles one bit apart (after an overflow)");
+    mode = 2; frame(2'd0, 232, 3000);
+    check(2'd0, 232, 130, "tiles one bit apart (after an overflow)");
 
     slow = 1;
-    mode = 0; frame(2'd2, 224, 9000);
-    check(2'd2, 224, 512, "512 tiles, sink busy 3 clocks out of 4");
+    mode = 0; frame(2'd2, 232, 9000);
+    check(2'd2, 232, 512, "512 tiles, sink busy 3 clocks out of 4");
     mode = 2; frame(2'd1, 3, 3000);               // 3 lines: a partial first row only
     check(2'd1, 3, -1, "frame of 3 lines");
     slow = 0;

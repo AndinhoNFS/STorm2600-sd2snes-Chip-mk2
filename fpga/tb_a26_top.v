@@ -248,7 +248,7 @@ module tb_a26_top;
     repeat (4) @(negedge clk);
 
     sreg_rd(4'd4, v); expect8("signature 'A'", v, 8'h41);
-    sreg_rd(4'd7, v); expect8("version",       v, 8'h0C);
+    sreg_rd(4'd7, v); expect8("version",       v, 8'h0D);
     sreg_rd(4'd13, v); expect8("dropped frames at start", v, 8'h00);
     if (loop_enable !== 1'b0 || busy !== 2'b00) begin errs = errs + 1; $display("FAIL  loop_enable/busy not idle"); end
     sreg_wr(4'd0, 8'hD7);
@@ -275,7 +275,7 @@ module tb_a26_top;
     sreg_rd(4'd1, v);
     if (v == 8'h00) begin errs = errs + 1; $display("FAIL  no frame published"); end
     else $display("ok    frames published = %0d", v);
-    sreg_rd(4'd2, v); expect8("picture lines", v, 8'hE0);
+    sreg_rd(4'd2, v); expect8("picture lines", v, 8'hE8);
 
     base = 20'h88000;                                    // the first frame goes to buffer 1
     bad_a = 0; bad_b = 0;                                // through the map (+$0010) and the tile list (+$0800)
@@ -296,7 +296,7 @@ module tb_a26_top;
       errs = errs + 1;
       $display("FAIL  frame buffer: %0d wrong tile words, %0d wrong map entries", bad_a, bad_b);
     end else
-      $display("ok    frame buffer: map and tile list correct (224 lines, 20 tiles 1:1 in columns 6..25)");
+      $display("ok    frame buffer: map and tile list correct (232 lines, 20 tiles 1:1 in columns 6..25)");
     expect8("header: distinct tiles", slot.mem[base], 8'h02);
     sreg_rd(4'd14, v); expect8("tile count register", v, 8'h02);
     sreg_rd(4'd15, v); expect8("tile count register, high", v, 8'h00);
