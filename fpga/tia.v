@@ -2,6 +2,9 @@
 //
 // tia.v -- Atari 2600 TIA (video side) written from scratch.  Milestone 3.
 //
+// Passo 33: the five objects (P0, P1, M0, M1, ball) now come from tia_hc.v + tia_obj.v (counters of the original chip); compile with
+// `define TIA_P31 to get the Passo 31 objects back (then tia_hc.v and tia_obj.v are not needed).
+//
 // WHAT IT IS
 //   A colour-clock-accurate pixel generator.  One cc_ce pulse = one colour
 //   clock (3.579545 MHz NTSC).  228 colour clocks per line: 68 HBLANK
@@ -52,7 +55,10 @@
 //
 `timescale 1ns / 1ps
 
-module tia (
+module tia #(
+  parameter HM74  = 1,       // HMOVE no ultimo ciclo da linha: valor nominal (ver tia_hc.v)
+  parameter HMVIS = 0
+) (
   input             clk,
   input             rst,
   input             cc_ce,
@@ -101,7 +107,9 @@ module tia (
   reg       enam0, enam1, enabl, denabl;
   reg [3:0] hmp0, hmp1, hmm0, hmm1, hmbl;
   reg       vdelp0, vdelp1, vdelbl, resmp0, resmp1;
+`ifdef TIA_P31
   reg [7:0] pos_p0, pos_p1, pos_m0, pos_m1, pos_bl;
+`endif
 
   reg c_m0p1, c_m0p0, c_m1p0, c_m1p1, c_p0pf, c_p0bl, c_p1pf, c_p1bl;
   reg c_m0pf, c_m0bl, c_m1pf, c_m1bl, c_blpf, c_p0p1, c_m0m1;
@@ -231,6 +239,7 @@ module tia (
   // last clock of the CPU cycle, so that is the next one (227 wraps to 0 = HBLANK)
   wire [7:0] hs       = (hcount == 8'd227) ? 8'd0 : hcount + 8'd1;
 
+`ifdef TIA_P31
   wire [7:0] dxp0 = rel(x, pos_p0);
   wire [7:0] dxp1 = rel(x, pos_p1);
   wire [7:0] dxm0 = rel(x, pos_m0);
@@ -242,6 +251,40 @@ module tia (
   wire m0_on = ms_on(dxm0, nusiz0[2:0], nusiz0[5:4], enam0 & ~resmp0);
   wire m1_on = ms_on(dxm1, nusiz1[2:0], nusiz1[5:4], enam1 & ~resmp1);
   wire bl_on = (vdelbl ? denabl : enabl) & (dxbl < (8'd1 << ctrlpf[5:4]));
+`else
+  // ---- Passo 33: objetos do chip original (tia_hc.v, tia_obj.v); `define TIA_P31 volta aos objetos do Passo 31 ---------
+  wire       hm_wr = wr && a == 6'h2A;
+  reg  [4:0] pend;                                   // RESP0, RESP1, RESM0, RESM1, RESBL escritos desde o ultimo colour clock
+  always @(posedge clk) begin
+    if (rst) pend <= 5'd0;
+    else begin
+      if (cc_ce) pend <= 5'd0;
+      if (wr && a >= 6'h10 && a <= 6'h14) pend[a - 6'h10] <= 1'b1;
+    end
+  end
+  wire [1:0] n_ph; wire [5:0] n_cnt; wire n_hb, n_hb1, n_hb2, n_hml, n_hmt, n_hms; wire [3:0] n_hmv;
+  tia_hc #(.HM74(HM74), .HMVIS(HMVIS)) n_hc (.clk(clk), .rst(rst), .cc_ce(cc_ce), .hmove_wr(hm_wr), .ph(n_ph), .cnt(n_cnt), .hb(n_hb),
+               .hb_nx(n_hb1), .hb_nx2(n_hb2), .hmove_lat(n_hml), .hm_tick(n_hmt), .hm_v(n_hmv), .hm_start(n_hms));
+  wire [7:0] p0g = vdelp0 ? dgrp0 : grp0;
+  wire [7:0] p1g = vdelp1 ? dgrp1 : grp1;
+  wire       blen = vdelbl ? denabl : enabl;
+  wire       p0_on, p1_on, m0_on, m1_on, bl_on, p0cen, p1cen;
+  tia_ply #(.HMVIS(HMVIS)) n_p0 (.clk(clk), .rst(rst), .cc_ce(cc_ce), .motck(~n_hb1), .reset_wr(pend[0]),
+     .nus(nusiz0[2:0]), .refl(refp0), .grp(p0g),
+     .hm_start(n_hms), .hm_tick(n_hmt), .hm_v(n_hmv), .hmv(hmp0), .pix(p0_on), .centre(p0cen));
+  tia_ply #(.HMVIS(HMVIS)) n_p1 (.clk(clk), .rst(rst), .cc_ce(cc_ce), .motck(~n_hb1), .reset_wr(pend[1]),
+     .nus(nusiz1[2:0]), .refl(refp1), .grp(p1g),
+     .hm_start(n_hms), .hm_tick(n_hmt), .hm_v(n_hmv), .hmv(hmp1), .pix(p1_on), .centre(p1cen));
+  tia_mis #(.HMVIS(HMVIS), .BALL(1'b0)) n_m0 (.clk(clk), .rst(rst), .cc_ce(cc_ce), .motck(~n_hb1), .reset_wr(pend[2]), .lock_reset(resmp0 & p0cen),
+     .en(enam0 & ~resmp0), .nus(nusiz0[2:0]), .size(nusiz0[5:4]),
+     .hm_start(n_hms), .hm_tick(n_hmt), .hm_v(n_hmv), .hmv(hmm0), .pix(m0_on));
+  tia_mis #(.HMVIS(HMVIS), .BALL(1'b0)) n_m1 (.clk(clk), .rst(rst), .cc_ce(cc_ce), .motck(~n_hb1), .reset_wr(pend[3]), .lock_reset(resmp1 & p1cen),
+     .en(enam1 & ~resmp1), .nus(nusiz1[2:0]), .size(nusiz1[5:4]),
+     .hm_start(n_hms), .hm_tick(n_hmt), .hm_v(n_hmv), .hmv(hmm1), .pix(m1_on));
+  tia_mis #(.HMVIS(HMVIS), .BALL(1'b1)) n_bl (.clk(clk), .rst(rst), .cc_ce(cc_ce), .motck(~n_hb1), .reset_wr(pend[4]), .lock_reset(1'b0),
+     .en(blen), .nus(3'b000), .size(ctrlpf[5:4]),
+     .hm_start(n_hms), .hm_tick(n_hmt), .hm_v(n_hmv), .hmv(hmbl), .pix(bl_on));
+`endif
 
   // playfield: 20 bits, 4 pixels each, right half repeats or mirrors
   wire [5:0] pfx  = x[7:2];                                  // 0..39
@@ -324,7 +367,9 @@ module tia (
       enam0 <= 1'b0; enam1 <= 1'b0; enabl <= 1'b0; denabl <= 1'b0;
       hmp0 <= 4'd0; hmp1 <= 4'd0; hmm0 <= 4'd0; hmm1 <= 4'd0; hmbl <= 4'd0;
       vdelp0 <= 1'b0; vdelp1 <= 1'b0; vdelbl <= 1'b0; resmp0 <= 1'b0; resmp1 <= 1'b0;
+`ifdef TIA_P31
       pos_p0 <= 8'd0; pos_p1 <= 8'd0; pos_m0 <= 8'd0; pos_m1 <= 8'd0; pos_bl <= 8'd0;
+`endif
       {c_m0p1, c_m0p0, c_m1p0, c_m1p1, c_p0pf, c_p0bl, c_p1pf, c_p1bl} <= 8'd0;
       {c_m0pf, c_m0bl, c_m1pf, c_m1bl, c_blpf, c_p0p1, c_m0m1} <= 7'd0;
       r_audc0 <= 4'd0; r_audc1 <= 4'd0; r_audv0 <= 4'd0; r_audv1 <= 4'd0;
@@ -417,6 +462,7 @@ module tia (
           6'h0D: begin pfw_v0 <= din; pfw_pend[0] <= 1'b1; pfw_skip[0] <= 1'b1; end   // PF0
           6'h0E: begin pfw_v1 <= din; pfw_pend[1] <= 1'b1; pfw_skip[1] <= 1'b1; end   // PF1
           6'h0F: begin pfw_v2 <= din; pfw_pend[2] <= 1'b1; pfw_skip[2] <= 1'b1; end   // PF2
+`ifdef TIA_P31
           6'h10: pos_p0 <= (hs < 8'd68) ? 8'd3 : rpos(hs, 3'd5);     // RESP0
           6'h11: pos_p1 <= (hs < 8'd68) ? 8'd3 : rpos(hs, 3'd5);     // RESP1
           6'h12: pos_m0 <= (hs < 8'd68) ? 8'd2 : rpos(hs, 3'd4);     // RESM0
@@ -424,6 +470,7 @@ module tia (
           // RESBL in the horizontal blank: position 2, or 3 when HMOVE was strobed earlier in this
           // blank (as the ALE / Stella; Crackpots and Decathlon do RESBL 9 clocks after HMOVE)
           6'h14: pos_bl <= (hs < 8'd68) ? (hmove_blank ? 8'd3 : 8'd2) : rpos(hs, 3'd4);     // RESBL
+`endif
           6'h15: r_audc0 <= din[3:0];
           6'h16: r_audc1 <= din[3:0];
           6'h17: r_audf0 <= din[4:0];
@@ -445,18 +492,24 @@ module tia (
           6'h27: vdelbl <= din[0];
           6'h28: begin
             resmp0 <= din[1];
+`ifdef TIA_P31
             if (resmp0 && !din[1]) pos_m0 <= addmid(pos_p0, nusiz0[2:0]);
+`endif
           end
           6'h29: begin
             resmp1 <= din[1];
+`ifdef TIA_P31
             if (resmp1 && !din[1]) pos_m1 <= addmid(pos_p1, nusiz1[2:0]);
+`endif
           end
           6'h2A: begin                                               // HMOVE
+`ifdef TIA_P31
             pos_p0 <= mv(pos_p0, hmp0);
             pos_p1 <= mv(pos_p1, hmp1);
             pos_m0 <= mv(pos_m0, hmm0);
             pos_m1 <= mv(pos_m1, hmm1);
             pos_bl <= mv(pos_bl, hmbl);
+`endif
             if (hs < 8'd68) hmove_blank <= 1'b1;
           end
           6'h2B: begin hmp0 <= 4'd0; hmp1 <= 4'd0; hmm0 <= 4'd0; hmm1 <= 4'd0; hmbl <= 4'd0; end

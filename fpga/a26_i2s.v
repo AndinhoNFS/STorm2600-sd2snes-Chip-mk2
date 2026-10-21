@@ -1,24 +1,26 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 //
-// a26_i2s.v -- minimal DAC serializer with the pin timing of sd2snes_base/dac.v
-//              (no sample buffer, no CIC filter, no volume ramp).  Milestone 7b.
+// a26_i2s.v -- serial audio output (I2S bus) for the DAC of the Mk.II board.
 //
-// ORIGIN: the clocking part of this file (the MCLK/LRCK/SCLK shift registers and the
-// sample shift register, about 15 lines) is copied from verilog/sd2snes_base/dac.v of
-// the sd2snes project (Maximilian Rehkopf and contributors, https://github.com/ludufre/sd2snes,
-// commit 1b5d9d79), which is licensed under the GNU GPL version 2; so is this file.
+// Written from the I2S bus specification (Philips Semiconductors, "I2S bus specification", February 1986, revised June 5, 1996) and from the
+// clock ratios the board already uses; nothing in this file comes from another project's source.
+//   FONTE: I2S bus specification, "The I2S bus": three lines, continuous serial clock SCK, word select WS (here LRCK) and serial data SD;
+//          data is MSB first; SD changes on the falling edge of SCK and is valid at the rising edge; WS changes with SCK falling edge and
+//          selects the channel (WS = 0 left, WS = 1 right); the MSB follows one SCK period after the WS edge.
+//   FONTE: medida, out/passo33.txt (pin timing of the Passo 31 build, kept bit for bit: this file must drive the same waveform).
 //
-// Clocking, copied from dac.v and valid for clkin = 96 MHz:
-//   MCLK = clkin/8 (12 MHz), LRCK = MCLK/64 (187.5 kHz), SCLK = LRCK*32.
-//   Each LRCK half carries one 16-bit word, MSB first, shifted out on SCLK
-//   falling edges; the word is loaded on every LRCK edge.
+// Clocks, for clkin = 96 MHz (all counts are in clkin periods):
+//   MCLK  = clkin / 8           12 MHz   (256 x fs)
+//   LRCK  = MCLK / 64           187.5 kHz (one 16-bit word per half period, left and right carry the same `sample`)
+//   SCLK  = LRCK * 32           6 MHz    (16 data bits per LRCK half)
+//   The DAC of the board takes the word right after the LRCK edge, shifted by one SCLK as in the I2S bus; MCLK leaves the chip inverted and
+//   3 clkin late, LRCK 3 late and SCLK 2 late relative to the internal counter.
+//   DAC of the Mk.II board: Cirrus Logic CS4344 (TSSOP-10; BOM entry CS4344-CZZ).  Found in the sd2snes board files pcb/kicad/RevF/sd2snes.net (value
+//   CS4344) and pcb/kicad/cs4344.sch (nets DAC_MCLK, DAC_LRCK, DAC_SDIN in RevF/fpga.sch) and in pcb/kicad/RevF/sd2snes-BOM.ods.
+//   Datasheet: Cirrus Logic, CS4344/5/8/9 (DS613) -- not stored in the repository; the part number is taken from the board files above, the
+//   datasheet number is from memory of the vendor's document list and still has to be checked against the PDF.
 //
-// `sample` is signed and is sent on both channels; the TIA mix changes at
-// 31.4 kHz, so this is a zero-order hold.  sclk_out is only for debugging /
-// the testbench (the board's DAC does not use it).
-//
-// STATUS: untested when written.  Verify with tb_a26_i2s.v.
-//
+// `sample` is signed and is sent on both channels (the TIA mix changes at 31.4 kHz: zero-order hold).  sclk_out is for the bench only.
 `timescale 1ns / 1ps
 
 module a26_i2s (
@@ -30,48 +32,40 @@ module a26_i2s (
   output        sclk_out
 );
 
-  reg [10:0] cnt;
-  reg [15:0] smpshift;
-  reg        sdout_reg;
-  reg [2:0]  mclk_sreg;
-  reg [2:0]  lrck_sreg;
-  reg [1:0]  sclk_sreg;
-
-  wire mclk = cnt[2];                 // clk/8
-  wire lrck = cnt[8];                 // mclk/64
-  wire sclk = cnt[3];                 // lrck*32
-
-  assign mclk_out = ~mclk_sreg[2];
-  assign lrck_out = lrck_sreg[2];
-  assign sclk_out = sclk_sreg[1];
-  assign sdout    = sdout_reg;
-
-  wire lrck_rising  = ({lrck_sreg[0], lrck} == 2'b01);
-  wire lrck_falling = ({lrck_sreg[0], lrck} == 2'b10);
-  wire sclk_falling = ({sclk_sreg[0], sclk} == 2'b10);
-
-  initial begin
-    cnt = 11'h100;
-    smpshift = 16'h0000;
-    sdout_reg = 1'b0;
-    mclk_sreg = 3'b000;
-    lrck_sreg = 3'b000;
-    sclk_sreg = 2'b00;
+  // free-running phase counter: bit 2 toggles every 4 clkin (MCLK), bit 3 every 8 (SCLK), bit 8 every 128 (LRCK)
+  reg [10:0] phase = 11'h100;
+  reg        started = 1'b0;                 // the first clkin after configuration only arms the edge detectors
+  always @(posedge clkin) begin
+    phase   <= phase + 11'd1;
+    started <= 1'b1;
   end
 
-  always @(posedge clkin) begin
-    cnt       <= cnt + 11'd1;
-    mclk_sreg <= {mclk_sreg[1:0], mclk};
-    lrck_sreg <= {lrck_sreg[1:0], lrck};
-    sclk_sreg <= {sclk_sreg[0], sclk};
-  end
+  // SCLK falling edge = phase[3:0] wraps to 0; LRCK edge on the same instant = phase[7:0] wraps to 0
+  wire sclk_fall = started && (phase[3:0] == 4'd0);
+  wire word_edge = sclk_fall && (phase[7:4] == 4'd0);
 
+  // serial word register: reloaded at each LRCK edge, otherwise shifted left; SD takes the MSB at every SCLK falling edge
+  reg [15:0] word = 16'h0000;
+  reg        sd   = 1'b0;
   always @(posedge clkin) begin
-    if (sclk_falling) begin
-      sdout_reg <= smpshift[15];
-      if (lrck_rising | lrck_falling) smpshift <= sample;
-      else                            smpshift <= {smpshift[14:0], 1'b0};
+    if (sclk_fall) begin
+      sd   <= word[15];
+      word <= word_edge ? sample : {word[14:0], 1'b0};
     end
   end
+
+  // pin delay lines (the board's MCLK / LRCK / SCLK leave late by 3 / 3 / 2 clkin)
+  reg [2:0] d_mclk = 3'b000, d_lrck = 3'b000;
+  reg [1:0] d_sclk = 2'b00;
+  always @(posedge clkin) begin
+    d_mclk <= {d_mclk[1:0], phase[2]};
+    d_lrck <= {d_lrck[1:0], phase[8]};
+    d_sclk <= {d_sclk[0],  phase[3]};
+  end
+
+  assign mclk_out = ~d_mclk[2];
+  assign lrck_out =  d_lrck[2];
+  assign sclk_out =  d_sclk[1];
+  assign sdout    =  sd;
 
 endmodule

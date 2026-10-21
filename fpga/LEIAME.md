@@ -9,11 +9,13 @@ Nada do MiSTer é copiado.
 | Arquivo | Conteúdo |
 |---|---|
 | `m6507.v`, `riot6532.v`, `tia.v`, `tia_audio.v` | CPU, RIOT e TIA (vídeo e áudio) |
+| `tia_hc.v`, `tia_obj.v`, `PROVENIENCIA_TIA.md` | Passo 33: contador horizontal e objetos (P0, P1, M0, M1, bola) com os contadores polinomiais do chip original; `tia.v` os usa, e `` `define TIA_P31 `` volta aos objetos do Passo 31. Origem de cada regra em `../docs/tia_spec.md` e `PROVENIENCIA_TIA.md` |
 | `a26_core.v` | os quatro acima mais os mappers |
 | `a26_vidwr.v`, `a26_tdict.v` | gravador do quadro e dicionário de tiles |
 | `a26_mem.v`, `a26_regs.v`, `a26_i2s.v`, `a26_top.v` | ligação com o shell do sd2snes |
 | `a26_pal4.hex` | as 4 paletas (Color-1, Color-2, Color-3, Black/White; paleta p em 128·p + c), cópia das tabelas de `a26_vidwr.v` |
 | `tb_*.v`, `slot_model.v`, `a26_bgr555.hex` | testbenches (iverilog); `a26_bgr555.hex` = Color-1 |
+| `tb_a26_i2s_eq.v`, `experimental/a26_i2s_p31_old.v` | Passo 33: prova de que o `a26_i2s.v` reescrito dirige os mesmos pinos que o do Passo 31 (`iverilog -g2005 -o t tb_a26_i2s_eq.v a26_i2s.v experimental/a26_i2s_p31_old.v && vvp t`) |
 | `make_atari_shell.py` | gera o projeto ISE (ver abaixo) |
 | `ports.txt` | portas dos módulos do sd2snes que viram stub |
 | `scripts/sweep_sementes.sh` | varredura de sementes de placement usada na síntese |
@@ -72,7 +74,7 @@ cada build). Para comparar, ignore os 100 primeiros bytes:
 ## Testbenches
 
 ```
-iverilog -g2005 -Wall -o tb_tia tb_tia.v tia.v && vvp tb_tia
+iverilog -g2005 -Wall -o tb_tia tb_tia.v tia.v tia_hc.v tia_obj.v && vvp tb_tia
 ```
 
 O comando de cada um está no cabeçalho do arquivo. `tb_m6507_func.v` precisa de
