@@ -22,6 +22,23 @@
   protótipo um ciclo antes não mudou nenhum jogo; não aplicado.
 - **Rally X (2004, WIP)**: continua com tela preta; causa não medida.
 
+## A testar no console (Passo 33, pré-release v0.9-p33)
+
+Bit `fpga_atari.bit` md5 `87887c111a788c51805a644313b16808`, versão `$0C`.
+Roteiro: conferir a versão `$0C`; Grand Prix; Ghoul; Chess; um jogo com som
+(I2S reescrito); os jogos já aprovados no Passo 31 (Checkers, H.E.R.O.,
+Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing, Combat Tank AI).
+Se possível, rodar também as ROMs de `tools/tia_tests/` num Atari 2600 real
+para comparar com o core.
+
+Diferenças conhecidas do Passo 33 ainda em aberto:
+
+- **Ghoul**: 1 pixel a mais no caso `hm_stuck` (HMOVE com o contador de
+  movimento preso).
+- **Chess**: janela de START do míssil logo depois de RESMx.
+- **Meta de folga**: +0,045 ns, abaixo da meta de +0,2 ns; os caminhos mais
+  apertados são do sd2snes base, não do core.
+
 ## A confirmar no console (Passo 24/25)
 
 Corrigidos em simulação contra o emulador. Em 2026-10-14 o bitstream do Passo 24

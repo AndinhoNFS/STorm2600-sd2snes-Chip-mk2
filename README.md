@@ -8,7 +8,7 @@ Projetos de base:
 
 - [ludufre/sd2snes](https://github.com/ludufre/sd2snes): firmware e base do FPGA do cartão.
 - [MiSTer-devel/Atari2600_MiSTer](https://github.com/MiSTer-devel/Atari2600_MiSTer):
-  referência de comportamento. O TIA usado aqui foi escrito do zero para caber no Spartan‑3.
+  referência de comportamento, usada como caixa‑preta. O TIA usado aqui foi escrito do zero para caber no Spartan‑3.
 
 ## Estado
 
@@ -23,6 +23,36 @@ Passo 31 + player v13 aprovado pelo autor no console. Testados e OK: Checkers, H
 Histórico de testes no console: Passo 23 (Pitfall, River Raid, Pac‑Man, Enduro,
 Frostbite e Boxing corretos), Passos 24/25 (Decathlon original abre), Passo 26
 (Crackpots e Decathlon sem os pixels da bola fora do lugar).
+
+### Em teste: Passo 33, TIA a partir do hardware do chip
+
+Branch [`passo33`](../../tree/passo33), pré‑release `v0.9-p33`. Ainda não foi
+testado no console; a `main` e a pasta `sdcard/` continuam no Passo 31 até a
+aprovação.
+
+- **Objetos do TIA refeitos como no chip original** (P0, P1, M0, M1 e bola):
+  cada objeto tem o seu contador polinomial de 6 bits com relógio de duas fases,
+  decodificações de START e HMOVE por pulsos extras com a trava "more‑motion",
+  em vez de um contador binário reconstruído a partir do comportamento de
+  emuladores. As regras vêm das *Atari 2600 TIA Hardware Notes* de Andrew
+  Towers (tiradas dos esquemáticos do chip), dos esquemáticos do TIA e do
+  *Stella Programmer's Guide*. Cada regra tem a fonte citada no código
+  (`// FONTE:`); a especificação está em [`docs/tia_spec.md`](docs/tia_spec.md)
+  e a proveniência em [`fpga/PROVENIENCIA_TIA.md`](fpga/PROVENIENCIA_TIA.md)
+  (nenhum trecho literal de 6 tokens ou mais em comum com o TIA do MiSTer).
+- **Saída de áudio I2S reescrita** a partir da especificação do barramento I2S;
+  forma de onda idêntica à do Passo 31 nos 4 pinos (0 diferenças em 400.000
+  clocks).
+- **Color-2** passa a ser uma tabela nova de 128 cores; Color-1, Color-3 e
+  Black/White não mudam.
+- **ROMs de teste do TIA** em [`tools/tia_tests/`](tools/tia_tests/) (casos de
+  canto de RESPx, RESMx, RESMP, NUSIZ e HMOVE), para rodar num Atari 2600 real
+  e no core.
+- Simulação, 516 ROMs de referência: 506 iguais ao Passo 31, 9 melhoram (Grand
+  Prix, Night Grand Prix, Ram Defender, Robot Tank, Attack Of The Mighty Aliens,
+  Ghoul, Aqua Hero, Mortal Kurling, Chess), nenhuma piora.
+- Síntese: versão `$0C` em `$2027`, 5.487 LUTs, 3.110 slices (86%), 2.677 FFs,
+  16/16 BRAM, folga +0,045 ns a 96 MHz (semente 17).
 
 ### O que mudou desde o Passo 26
 
