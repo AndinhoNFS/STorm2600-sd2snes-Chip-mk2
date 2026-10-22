@@ -60,7 +60,8 @@ module tb_d3;
   wire [15:0] fb_waddr;
   wire [15:0] fb_wdata;
   wire [7:0]  fb_frames, fb_nlines;
-  a26_vidwr vid (.clk(clk), .rst(rst),
+  a26_vidwr #(.DLY(2)) vid (   // DLY = 2: one colour clock in 4 clk (see tb_frames.v)
+    .clk(clk), .rst(rst),
     .pix_stb(pix_stb), .pix_x(pix_x), .pix_vis(pix_vis), .pix_src(pix_src),
 `ifndef OLD_VIDWR
     .pix_col(pix_col),                 // step 23; -DOLD_VIDWR builds against a writer without it (bak_v11)
