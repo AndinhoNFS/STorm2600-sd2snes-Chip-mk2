@@ -14,15 +14,48 @@ Projetos de base:
 
 | Item | Versão |
 |---|---|
-| Player SNES | v14 (`atari_snes.bin`, md5 `9cbeeda1…`) |
-| Bitstream FPGA | Passo 33 (`fpga_atari.bit`, md5 `87887c11…`), versão `$0C` em `$2027` |
-| Firmware | Passo 25 (`firmware.img`, md5 `f9634a74…`, detecta o mapper FE) |
-| Uso do FPGA | 5487/7168 LUTs, 3110/3584 slices (86%), 16/16 BRAM, folga +0,045 ns a 96 MHz |
+| Player SNES | v17 (`atari_snes.bin`, md5 `4074bd4c…`) |
+| Bitstream FPGA | Passo 34 (`fpga_atari.bit`, md5 `a6769dd1…`), versão `$0D` em `$2027` |
+| Firmware | Passo 35 (`firmware.img`, md5 `ae29494a…`), sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes; detecta o mapper FE |
+| Uso do FPGA | 5489/7168 LUTs, 3096/3584 slices (86%), 16/16 BRAM, folga +0,003 ns a 96 MHz |
 
-Passo 33 + player v14 aprovados pelo autor no console em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
+Passo 34 + Passo 35 + player v17 aprovados pelo autor no console em 22/10/2026. Passo 33 + player v14 aprovados em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
 Histórico de testes no console: Passo 23 (Pitfall, River Raid, Pac‑Man, Enduro,
 Frostbite e Boxing corretos), Passos 24/25 (Decathlon original abre), Passo 26
 (Crackpots e Decathlon sem os pixels da bola fora do lugar).
+
+### Passos 34 e 35 + player v17: aprovados no console em 22/10/2026
+
+Branch [`passo35`](../../tree/passo35), release `v0.10-p35`.
+
+- **Captura de 232 linhas** (Passo 34): a janela do core passa de 224 para 232
+  linhas (TIA 27 a 258), com mapa de 29 fileiras e tabelas de cor e janela de
+  233 entradas. O placar e o céu, que ficavam cortados em jogos como o Bobby Is
+  Going Home, aparecem inteiros, e nenhum jogo muda de lugar na tela (cada
+  linha do TIA continua na mesma linha da TV). Em simulação, no sistema
+  completo (Bobby Is Going Home, Combat e River Raid), 0 pixels de diferença
+  contra a imagem do TIA nas linhas capturadas.
+  O player v17 liga a imagem na linha 1, usa o IRQ da linha 233 e copia o mapa
+  de 1.856 bytes; ele só funciona com o bitstream do Passo 34.
+- **Placar com prioridade (V1)**: o modo placar (CTRLPF bit 1) só vale com a
+  prioridade (bit 2) desligada; com a prioridade ligada o campo de jogo passa
+  na frente do placar. Corrige jogos como Taxi e Space Shuttle em simulação.
+  Feito a partir da lógica do chip original, não medido num Atari.
+- **Firmware sobre a release oficial v1.11.2-br-v2.17** (Passo 35): o patch do
+  modo Atari foi refeito sobre a tag da v2.17, e o Mk.III fica idêntico ao
+  oficial. Corrige as pastas mostradas como "?10", "?G" no menu, que vinham do
+  firmware do Passo 25 (feito de um commit posterior à v2.17) usado com o
+  `menu.bin` da 2.16.4: agora a instalação usa o pacote oficial inteiro da
+  v2.17. O `.a26` pede a confirmação de "core experimental" na primeira vez.
+- **Player v17**: R pausa e o texto PAUSE fica na tela (como no v14), agora em
+  232 linhas. O L não faz nada na versão pública; o v15 (versão de teste, com
+  o diagnóstico do L) continua em `player/`.
+- Síntese: versão `$0D` em `$2027`, 5.489 LUTs, 3.096 slices (86%), 2.695 FFs,
+  16/16 BRAM, folga +0,003 ns a 96 MHz (semente 17).
+- **Em observação**: a troca de quadro (trava dos 3 buffers com as 232 linhas).
+  Medido em simulação: a trava tem margem de mais de 100 vezes sobre o atraso do
+  player, e as quatro palavras de cor da última linha são gravadas ~12 µs depois
+  da publicação do quadro, sem efeito prático medido. Ver `docs/PENDENCIAS.md`.
 
 ### Passo 33 + player v14: aprovados no console em 21/10/2026
 
@@ -107,11 +140,11 @@ jogável do começo ao fim: só os 3 quadros, sem controle, foram comparados.
 1. O core do Atari roda no FPGA e grava cada quadro na PSRAM do cartão em
    triplo buffer: mapa de tiles BG1, lista de tiles 2bpp, 4 canais de cor por
    linha e janela horizontal.
-2. O player no SNES, no IRQ da linha 232, trava o buffer mais recente e copia
+2. O player no SNES, no IRQ da linha 233, trava o buffer mais recente e copia
    mapa e tiles para a VRAM por DMA.
 3. HDMA indireto troca a paleta e a janela linha a linha, reproduzindo as cores
    do Atari.
-4. Imagem 1:1 (160 colunas), 224 linhas centradas em modo overscan 239.
+4. Imagem 1:1 (160 colunas), 232 linhas (TIA 27 a 258) em modo overscan 239.
 
 Detalhes em [docs/DESIGN.md](docs/DESIGN.md).
 
@@ -141,7 +174,7 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
   ROMs distintas) usam Superchip.
 - **Mappers**: suportados 2K, 4K, F8, F6, F4 e FE. Os demais (E0, E7, FA/12K,
   64K, CV, UA, 3F, Supercharger e tamanhos fora do padrão) não.
-- **Imagem PAL cortada**: o SNES mostra 224 linhas; jogos PAL têm 228 a 250, e
+- **Imagem PAL cortada**: o SNES mostra 232 linhas; jogos PAL têm 228 a 250, e
   as linhas que sobram ficam de fora.
 - **Mais de 4 cores numa mesma linha**: o SNES recebe 4 cores por linha; a
   quinta em diante sai com uma das 4. Afeta sobretudo demos de cor e poucos
@@ -150,7 +183,7 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
   e se afasta do emulador depois de alguns segundos. Uma parte disso é o estado
   da RAM ao ligar (no console ele é aleatório, não é defeito); o resto não tem
   causa medida.
-- **Bobby Is Going Home** ainda aparece com defeito no console; **Crackpots** tem estalos no áudio. Ghoul (+1 pixel) e Chess (janela de START do míssil) diferem do emulador de referência.
+- Ghoul (+1 pixel) e Chess (janela de START do míssil) diferem do emulador de referência. A troca de quadro está em observação (ver `docs/PENDENCIAS.md`).
 - **Quadro repetido**: o Atari roda a 59,92 Hz e o SNES a 60,10 Hz; um quadro
   se repete a cada ~5,5 s.
 
@@ -158,7 +191,7 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
 
 ```
 fpga/    fontes do core (Verilog), testbenches e script que gera o projeto ISE
-player/  player SNES v14 e v13 (65816, ca65) e os testes deles
+player/  player SNES v17, v15 (versão de teste), v14 e v13 (65816, ca65) e os testes deles
 tools/   scripts de comparação e medição contra o emulador (ALE)
 firmware/ mudanças no firmware do sd2snes para o modo Atari (patch)
 sdcard/  arquivos prontos para o cartão (bitstream, player e firmware)
@@ -184,9 +217,9 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - `fpga/tb_m6507_func.v` roda o teste funcional do 6502 de
   [Klaus Dormann](https://github.com/Klaus2m5/6502_65C02_functional_tests)
   (GPL-3.0), que não é distribuído aqui.
-- O `sdcard/sd2snes/firmware.img` é o firmware do sd2snes (GPL versão 2) no
-  commit `1b5d9d79`, compilado com as mudanças de [`firmware/`](firmware/): o
-  patch e os quatro arquivos modificados, com os cabeçalhos originais.
+- O `sdcard/sd2snes/firmware.img` é o firmware do sd2snes (GPL versão 2) na
+  tag `v1.11.2-br-v2.17`, compilado com as mudanças de [`firmware/`](firmware/):
+  o patch e os quatro arquivos modificados, com os cabeçalhos originais.
 - O `sdcard/sd2snes/fpga_atari.bit` contém, além do core deste repositório, o
   restante do FPGA do sd2snes (`verilog/sd2snes_base` do mesmo commit).
 - O player (`sdcard/sd2snes/atari_snes.bin`) é montado a partir de `player/`,
@@ -194,10 +227,10 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - O bitstream é gerado a partir de `fpga/` e do sd2snes no commit `1b5d9d79`;
   o passo a passo (ISE 14.7, `make`, `utils/rle`, semente 13) está em
   [`fpga/LEIAME.md`](fpga/LEIAME.md).
-- Fonte correspondente (GPL): a fonte completa do `firmware.img` e do
-  `fpga_atari.bit` é o commit `1b5d9d79` de
-  [ludufre/sd2snes](https://github.com/ludufre/sd2snes) mais as pastas
-  [`firmware/`](firmware/) e [`fpga/`](fpga/) deste repositório.
+- Fonte correspondente (GPL): a do `firmware.img` é a tag `v1.11.2-br-v2.17` de
+  [ludufre/sd2snes](https://github.com/ludufre/sd2snes) mais a pasta
+  [`firmware/`](firmware/) deste repositório; a do `fpga_atari.bit` é o commit
+  `1b5d9d79` do mesmo projeto mais a pasta [`fpga/`](fpga/).
 
 ## Aviso
 
@@ -224,24 +257,28 @@ Só para o sd2snes **Mk.II**.
 
 1. **Guarde uma cópia da pasta `/sd2snes` do cartão**, ou pelo menos do
    `/sd2snes/firmware.img` (ver Aviso acima).
-2. Baixe a release [v1.11.2-br-v2.16.4 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.16.4)
-   (`sd2snes_firmware_v1.11.2-br-2.16.4.zip`) e copie a pasta `sd2snes` dela
-   para a raiz do cartão.
+2. Baixe o pacote oficial [v1.11.2-br-v2.17 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.17)
+   (`sd2snes_firmware_v1.11.2-br-2.17.zip`) e copie a pasta `sd2snes` dela
+   **inteira** para a raiz do cartão. Ela sobrescreve `menu.bin`, `m3nu.bin`,
+   `igmenu.bin`, `menu.spc`, `savestate_fixes.yml`, os `firmware.*`,
+   `a26_snes.bin` e os núcleos `fpga_*`, e traz arquivos novos (`onboarding.bin`,
+   `welcome.*`, `music/`...): guarde antes o que você tiver personalizado.
 3. Baixe da página de Releases deste projeto o `sd2snes-atari-files.zip` e
    extraia na raiz do cartão (ele já traz a pasta `sd2snes/`), ou copie os 3
    arquivos de [`sdcard/sd2snes/`](sdcard/sd2snes/) — `fpga_atari.bit`,
    `atari_snes.bin` e `firmware.img` — para a pasta `sd2snes` do cartão,
    substituindo o `firmware.img`.
 4. Se quiser, confira os md5 (`sdcard/MD5SUMS`):
-   `fpga_atari.bit` `5bbcf7b2be8815e326de021119af63bf`,
-   `atari_snes.bin` `8735f54a9edb3e8da8b32d25855a6c96`,
-   `firmware.img` `f9634a74371d24489c0727ded05604b3`.
+   `fpga_atari.bit` `a6769dd1c0da788fbd5450242752753f`,
+   `atari_snes.bin` `4074bd4c8861c1dd586a8799d16e412f`,
+   `firmware.img` `ae29494ac8d370b263aef5a1042c5b79`.
 5. Ponha as ROMs `.a26` em qualquer pasta do cartão e ligue o console. Na
-   primeira partida o bootloader grava o `firmware.img`.
+   primeira partida o bootloader grava o `firmware.img`. Na primeira vez que
+   abrir um `.a26`, o menu da 2.17 pede a confirmação de "core experimental"
+   (dá para marcar "não avisar de novo").
 
-Testado apenas com o firmware do Passo 25 (feito do commit `1b5d9d79` do
-ludufre/sd2snes) junto com a release v1.11.2-br-v2.16.4. Com a base 2.17 não
-foi testado. Como voltar atrás está em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
+Testado no console com o firmware do Passo 35 e o pacote oficial v1.11.2-br-v2.17
+inteiro. Como voltar atrás está em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
 ROMs de Atari não são distribuídas com este projeto.
 
 ## Autoria

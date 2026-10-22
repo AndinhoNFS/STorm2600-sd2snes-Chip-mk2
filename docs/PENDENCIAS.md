@@ -10,8 +10,8 @@
 - **Superchip** (RAM de 128 bytes no cartucho): 114 arquivos da coleção. Os 16
   BRAMs estão em uso; em LUT-RAM caberia, mas os slices estão em 88%.
 - **Mappers não suportados**: E0, E7, FA/12K, 64K, CV, UA, Supercharger.
-- **Imagem PAL**: passa das 224 linhas que o SNES mostra (115 ROMs da
-  coleção). O registrador de deslocamento (`$2026`) existe; falta o player
+- **Imagem PAL**: passa das 232 linhas que o SNES mostra (115 ROMs da
+  coleção, medido com 224). O registrador de deslocamento (`$2026`) existe; falta o player
   escolher o deslocamento por jogo.
 - **Diferença que cresce com o tempo** (~139 ROMs da coleção, ex.: Enduro,
   Pitfall): parte é o estado da RAM ao ligar (aleatório no console); o resto
@@ -21,6 +21,39 @@
 - **Timer do RIOT**: lê um a mais que o emulador logo depois da escrita. Um
   protótipo um ciclo antes não mudou nenhum jogo; não aplicado.
 - **Rally X (2004, WIP)**: continua com tela preta; causa não medida.
+
+## Em observação: troca de quadro (Passos 34 e 35)
+
+Estudo em simulação (sistema completo, com um modelo do player que lê o buffer
+mais novo e grava a trava) da trava dos 3 buffers com a captura de 232 linhas:
+
+- A trava só falha se o SNES demorar, entre ler o buffer e gravar a trava, mais
+  do que o intervalo entre publicar um quadro e começar a gravar o seguinte:
+  no mínimo 0,64 ms (Bobby, deslocamento -16) e de 1,64 a 1,90 ms com o
+  deslocamento 0. O player v17 gasta uns 5 µs: margem de mais de 100 vezes.
+- Nenhum quadro foi perdido (`fb_dropped` e `fifo_ovf` em 0), nem com 300 a 370
+  tiles diferentes por quadro.
+- As quatro palavras de cor da **última linha** (entrada 231) são gravadas ~12 µs
+  **depois** da publicação do quadro, no buffer já publicado. Sem efeito prático
+  medido (o HDMA lê essas cores milissegundos depois). Correção possível: segurar
+  a publicação até essas palavras saírem (até 1 linha de atraso, bit novo).
+- Fica em observação até confirmar a olho nu no console e fazer o A/B com o
+  Passo 33 + player v14.
+
+## Aprovado no console (Passos 34 e 35 + player v17, 22/10/2026)
+
+Bit `fpga_atari.bit` md5 `a6769dd1c0da788fbd5450242752753f` (versão `$0D`),
+`atari_snes.bin` (player v17) md5 `4074bd4c8861c1dd586a8799d16e412f` e
+`firmware.img` (Passo 35, sobre a release oficial v1.11.2-br-v2.17) md5
+`ae29494ac8d370b263aef5a1042c5b79`. Captura de 232 linhas, placar com
+prioridade (V1) e as pastas do menu sem o "?10". Feito a partir da lógica do
+chip original (notas do Towers, esquemáticos e *Stella Programmer's Guide*), não
+medido num Atari. Barras do HMOVE: ficam pretas, como no original.
+
+Diferenças em aberto: **Ghoul** (+1 pixel, `hm_stuck`) e **Chess** (janela de
+START do míssil logo depois de RESMx). Folga de timing de +0,003 ns a 96 MHz
+(abaixo da meta de +0,2 ns): qualquer mudança no core pede nova varredura de
+sementes.
 
 ## Aprovado no console (Passo 33 + player v14, 21/10/2026)
 
@@ -35,8 +68,7 @@ Diferenças conhecidas do Passo 33 ainda em aberto:
 - **Ghoul**: 1 pixel a mais no caso `hm_stuck` (HMOVE com o contador de
   movimento preso).
 - **Chess**: janela de START do míssil logo depois de RESMx.
-- **Bobby Is Going Home**: defeito no console; as simulações sem tecla não
-  mostram diferença entre o P31 e o P33.
+- **Bobby Is Going Home**: tratado nas 232 linhas do Passo 34.
 - **Crackpots**: estalos no áudio.
 - **Meta de folga**: +0,045 ns, abaixo da meta de +0,2 ns; os caminhos mais
   apertados são do sd2snes base, não do core.
