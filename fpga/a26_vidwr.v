@@ -32,8 +32,11 @@
 //             entry L = 232 of every channel is black (word 1 = $0000)
 //   window table +$5000 : line L is one word at +2*L = left | right<<8,
 //             left = 48, right = 207 (the 160 columns of the picture); left = 56 when the
-//             first 8 TIA pixels of the line were blanked (the HMOVE bar; the tiles hold
-//             colour source 0 there); entry 232 = 0 | 255<<8
+//             first 8 TIA pixels of the line were blanked (the HMOVE bar) and the build has
+//             A26_HMOVE_BLACK defined (the tiles hold colour source 0 there).  Without it
+//             (default, version $0E) the window is 48..207 on every line and on a bar line
+//             pixels 0..7 repeat the index of pixel 8 (tile 6 is rewritten on pixel 8).
+//             entry 232 = 0 | 255<<8
 //   Entry 232 is rewritten every frame, one word per line on lines 0..8.
 //   The four colours of a line are taken at TIA pixel 16.  Per line the writes are:
 //   20 tile words on pixels 7, 15 .. 159 (tiles 6..25); 12 zero tile words on pixels
@@ -724,7 +727,11 @@ module a26_vidwr #(
             if (tb_j[3]) begin                             // window: left | right << 8
               fb_waddr <= {wb, 6'b101000, tb_l};           // +$5000 + 2*L
               fb_wdata <= tb_term      ? {8'd255, 8'd0}
+`ifdef A26_HMOVE_BLACK
                         : (hmb & ~blk) ? {8'd207, 8'd56} : {8'd207, 8'd48};
+`else
+                        : {8'd207, 8'd48};
+`endif
             end else begin                                 // +$4000 + k*$400 + 4*L (+2)
               fb_waddr <= {wb, 3'b100, tb_k, tb_l, tb_j[0]};
               fb_wdata <= ~tb_j[0]       ? {6'd0, tb_k, 6'd0, tb_k}
@@ -736,6 +743,13 @@ module a26_vidwr #(
             fb_waddr <= {wb, 1'b0, y[7:3], z_col, y[2:0]};
             fb_wdata <= 16'h0000;
           end
+`ifndef A26_HMOVE_BLACK
+          if (hmb && ph == 3'd0 && grp == 5'd1) begin   // HMOVE bar: pixels 0..7 repeat pixel 8's index (blk is not valid yet)
+            fb_wr    <= 1'b1;                                    // (rewrites tile 6, written black on pixel 7)
+            fb_waddr <= {wb, 1'b0, y[7:3], 5'd6, y[2:0]};
+            fb_wdata <= {{8{s[1]}}, {8{s[0]}}};
+          end
+`endif
           if (ph == 3'd7) begin                            // 8 pixels, both planes
             fb_wr    <= 1'b1;
             fb_waddr <= {wb, 1'b0, y[7:3], grp + 5'd6, y[2:0]};

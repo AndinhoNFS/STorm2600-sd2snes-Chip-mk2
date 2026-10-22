@@ -250,7 +250,8 @@ module tb_a26_vidwr;
             blank = (line < 40) || (line >= 232);
             p0 = 8'd0; p1 = 8'd0;
             for (i2 = 0; i2 < 8; i2 = i2 + 1) begin
-              s = (!blank && inpic(tx) && visf((tx - 6) * 8 + i2, y, f)) ? idxf((tx - 6) * 8 + i2, line, f) : 2'b00;
+              s = (!blank && inpic(tx) && visf((tx - 6) * 8 + i2, y, f)) ? idxf((tx - 6) * 8 + i2, line, f)
+                : (!blank && tx == 6 && visf(8, y, f)) ? idxf(8, line, f) : 2'b00;   // HMOVE bar: repeat pixel 8
               if (f == 0 && !blank && inpic(tx) && s !== srcf((tx - 6) * 8 + i2, y, f)) n_fix = n_fix + 1;
               p0 = {p0[6:0], s[0]};
               p1 = {p1[6:0], s[1]};
@@ -283,7 +284,7 @@ module tb_a26_vidwr;
         if (mem[base + 16'h2400 + row * 2 + 1] !== (blank ? 16'h0000 : colw(2, line, f)))  bad_p = bad_p + 1;
         if (mem[base + 16'h2600 + row * 2]     !== 16'h0303)  bad_p = bad_p + 1;
         if (mem[base + 16'h2600 + row * 2 + 1] !== (blank ? 16'h0000 : colw(3, line, f)))  bad_p = bad_p + 1;
-        if (mem[base + 16'h2800 + row] !== {8'd207, (!blank && !visf(0, y, f)) ? 8'd56 : 8'd48}) bad_p = bad_p + 1;
+        if (mem[base + 16'h2800 + row] !== {8'd207, 8'd48}) bad_p = bad_p + 1;
       end
       // entry 232: black in every channel, full window
       if (mem[base + 16'h2000 + 464] !== 16'h0000 || mem[base + 16'h2000 + 465] !== 16'h0000) bad_p = bad_p + 1;
@@ -352,7 +353,7 @@ module tb_a26_vidwr;
     check_buf(1, 0, "buffer 1 = frame 0", 0, 232);
     expect_val("tile count register = header", tile_n, last_n);
     // buffer row 10 is picture line 0 (scan line 40 = 3 + 27 + 10); the HMOVE-bar line is row 20
-    expect_val("window left, row 20 (HMOVE bar)", mem[16384 + 16'h2800 + 20][7:0], 56);
+    expect_val("window left, row 20 (HMOVE bar)", mem[16384 + 16'h2800 + 20][7:0], 48);
     expect_val("window left, row 19",   mem[16384 + 16'h2800 + 19][7:0], 48);
     expect_val("window left, row 21",   mem[16384 + 16'h2800 + 21][7:0], 48);
     expect_val("window right, row 20",  mem[16384 + 16'h2800 + 20][15:8], 207);
@@ -369,7 +370,7 @@ module tb_a26_vidwr;
       integer nset;
       nset = 0;
       for (q = 0; q < 232; q = q + 1) if (mem[16384 + 16'h2800 + q][7:0] == 8'd56) nset = nset + 1;
-      expect_val("lines with the bar in frame 0", nset, 1);
+      expect_val("lines with left 56 in frame 0", nset, 0);
       // nothing may land outside header, map, the tiles in use and the five tables
       nset = 0;
       for (q = 0; q < 16384; q = q + 1)
