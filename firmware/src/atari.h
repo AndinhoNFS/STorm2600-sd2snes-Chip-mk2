@@ -54,16 +54,16 @@ typedef enum {
   A26_BS_4K = 1,
   A26_BS_F8 = 2,
   A26_BS_F6 = 3,
-  A26_BS_F4 = 4,
-  /* mk2 only: the sd2snes_atari core maps FE as mapper 5 (Passo 24); the mk3 core has
-     no FE, so the detector never hands it out there (A26_HAVE_FE below). */
-  A26_BS_FE = 5
-  /* 6..15 reserved */
-} a26_bs_t;
-
+  A26_BS_F4 = 4
 #ifdef CONFIG_MK2
-#define A26_HAVE_FE
+  /* mk2 only: the sd2snes_atari core maps FE as mapper 5 (Passo 24); the mk3 core has
+     no FE, so neither the value nor its detection exist there. */
+  , A26_BS_FE = 5
+  /* 6..15 reserved */
+#else
+  /* 5..15 reserved */
 #endif
+} a26_bs_t;
 
 typedef struct __attribute__((__packed__)) _a26_romprops {
   uint8_t  has_a26;           /* booted file is a .a26 (by extension) */
