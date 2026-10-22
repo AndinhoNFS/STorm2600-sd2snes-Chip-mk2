@@ -99,7 +99,7 @@ module tb_trace;
   // per-pixel trace of the frame being captured
   reg [63:0] tr [0:35839];
   always @(posedge clk)
-    if (pix_stb && ((pix_x == 8'd0) ? vid.cap_new : vid.cap) && vid.y < 8'd224)
+    if (pix_stb && ((pix_x == 8'd0) ? vid.cap_new : vid.cap) && vid.y < 8'd232)
       tr[{24'd0, vid.y} * 160 + {24'd0, pix_x}] <= {2'b00, pix_src, 3'b000, pix_vis, 1'b0, pix_col, 1'b0, sh[27:21], 1'b0, sh[20:14], 1'b0, sh[13:7], 1'b0, sh[6:0], 5'd0, nsz[5:3], 5'd0, nsz[2:0]};
 
   // colour-register writes: the write takes effect on colour clock hcount + 1

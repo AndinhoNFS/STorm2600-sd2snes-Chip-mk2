@@ -1,8 +1,7 @@
-Atari 2600 no sd2snes Mk.II -- layout do frame buffer (fpga_atari.bit md5 473215f082acd657de7f586d61e5d214, passo 24)
-(O formato do buffer e' o do passo 21b, a largura 1:1 a do passo 22 e a regra de CORES a do passo 23.  O passo 24 nao
- muda nada neste layout: so' o TIA (atraso das escritas de PF e GRP), o mapper FE = 5 em $2023 e a versao $06.
- Bit do passo 23, md5 5ba5631572bb6352c2239557e13ff12d: atari_core/bak_v12.  Passo 22, c4e5d085...: atari_core/bak_v11.
- Bit e layout do passo 21b: atari_core/bak_v10.  Layouts anteriores: LAYOUT_BUFFER_v9.txt para o fpga_atari_v9.bit, 896 tiles diretos; LAYOUT_BUFFER_v8.txt para o v8)
+Atari 2600 no sd2snes Mk.II -- layout do frame buffer (fpga_atari.bit md5 a6769dd1c0da788fbd5450242752753f, passo 34, versao $0D)
+(Captura vertical de 232 linhas: TIA 27..258, mapa de 29 fileiras, tabelas com 233 entradas e a 232 preta.  O formato dos
+ tiles, o mapa 1:1 e a regra de CORES sao os dos passos 21b a 23.  Layout de 224 linhas e 28 fileiras (passo 33 e anteriores):
+ git show v0.9-p33:docs/LAYOUT_BUFFER.txt)
 
 TRES buffers de 32 KB na PSRAM:
   buffer 0 = $380000 = $70:8000      buffer 1 = $388000 = $71:8000      buffer 2 = $390000 = $72:8000
@@ -11,7 +10,7 @@ Tudo sao palavras de 16 bits em endereco par, little-endian (byte par = parte ba
 Offset   Tamanho  Conteudo
 +$0000   16       Cabecalho: palavra 0 = N, o numero de tiles distintos do quadro (o tile 0 conta);
                   palavras 1..7 = 0.
-+$0010   1792     Mapa do BG1: 28 linhas x 32 colunas, entrada r*32 + c, 16 bits:
++$0010   1856     Mapa do BG1: 29 linhas x 32 colunas (ate' +$074F), entrada r*32 + c, 16 bits:
                   bits 9:0 = numero do tile, o resto 0.
                   A imagem ocupa as colunas c = 6..25; as colunas 0..5 e 26..31 trazem sempre 0.
 +$0800   N*16     Lista dos tiles distintos, 16 bytes cada (tile i em +$0800 + i*16), formato 2bpp
@@ -23,25 +22,25 @@ Offset   Tamanho  Conteudo
                   8(c-6)..8(c-6)+7 do Atari.
                   Capacidade: 512 tiles (N <= 512; a lista vai no maximo ate' +$27FF).
                   So' os N primeiros tiles valem; o que vem depois e' lixo de quadros antigos.
-+$4000   $384     Canal 0 (COLUBK): 225 entradas de 4 bytes.
-+$4400   $384     Canal 1 (COLUPF)
-+$4800   $384     Canal 2 (COLUP0)
-+$4C00   $384     Canal 3 (COLUP1)
-                  Entrada da linha L (0..223) em +4*L:
++$4000   $3A4     Canal 0 (COLUBK): 233 entradas de 4 bytes.
++$4400   $3A4     Canal 1 (COLUPF)
++$4800   $3A4     Canal 2 (COLUP0)
++$4C00   $3A4     Canal 3 (COLUP1)
+                  Entrada da linha L (0..231) em +4*L:
                     bytes 0,1 = k, k          (k = numero do canal, 0..3)
                     bytes 2,3 = cor BGR555    (baixo, alto; bit 15 = 0); $0000 nas linhas com VBLANK
-                  Entrada L = 224: k, k, $00, $00 (preta), regravada em todo quadro.
-+$5000   $1C2     Janela: 225 entradas de 2 bytes, linha L em +2*L:
+                  Entrada L = 232: k, k, $00, $00 (preta), regravada em todo quadro.
++$5000   $1D2     Janela: 233 entradas de 2 bytes, linha L em +2*L:
                     byte 0 = esquerda: 48, ou 56 se a linha teve a barra do HMOVE (8 colunas)
                     byte 1 = direita: 207
                   Linhas com VBLANK tambem trazem 48, 207 (as cores delas sao pretas).
-                  Entrada L = 224: 0, 255.
-O resto de cada buffer ($0710-$07FF, $2800-$3FFF, $4384-$43FF, ..., $51C2-$7FFF) nao e' escrito.
+                  Entrada L = 232: 0, 255.
+O resto de cada buffer ($0750-$07FF, $2800-$3FFF, $43A4-$43FF, ..., $51D2-$7FFF) nao e' escrito.
 
 DICIONARIO DE TILES
   - O tile 0 e' sempre o tile liso de indice 0 (16 bytes zero). Linhas de VBLANK, linhas nao
     gravadas e linhas de tiles sem nenhuma linha gravada ficam com a entrada 0 no mapa.
-  - Os numeros sao dados pela ordem da primeira aparicao, em ordem de linha (r = 0..27,
+  - Os numeros sao dados pela ordem da primeira aparicao, em ordem de linha (r = 0..28,
     c = 0..31), recomecando a cada quadro.
   - A comparacao e' exata: dois tiles so' recebem o mesmo numero se os 16 bytes forem iguais.
   - Numa ultima linha de tiles incompleta (R2 nao multiplo de 8), as linhas que faltam valem zero.
@@ -49,16 +48,17 @@ DICIONARIO DE TILES
     registrador $202D conta o descarte. O mesmo vale para um quadro cuja janela comeca antes de o
     quadro anterior ter sido todo gravado (nao aconteceu em nenhuma simulacao).
   - N (R0) so' avanca depois que a ultima linha de tiles, o mapa e o cabecalho estao na PSRAM.
-  Copia tipica por quadro: 16 + 1792 + N*16 bytes de tiles/mapa (N maximo de 46 a 89 nos seis
-  jogos medidos, 107 no arranque do Enduro: ate' uns 3,5 KB), mais as tabelas de cor e de janela.
+  Copia tipica por quadro: 16 + 1856 + N*16 bytes de tiles/mapa (N medido: 106 no maximo na tela
+  inicial do Bobby com 232 linhas, 190 na fase da noite medida com 224 linhas), mais as tabelas de
+  cor e de janela.
 
 ENQUADRAMENTO
-  A janela sao 224 linhas de varredura consecutivas a partir da linha YS, contada desde o fim
-  do VSYNC (linha 0 = a linha em que o VSYNC desce, como no Stella).  YS = YS0 + deslocamento,
-  YS0 = 34.  Linhas da janela com VBLANK ligado saem pretas: tiles 0, as quatro cores $0000,
-  janela 48..207.  Com YS0 = 34 a linha 0 do buffer e' a linha 0 da tela do Stella/ALE (210
-  linhas); as 14 linhas a mais ficam embaixo.
-  R2 = linhas gravadas no quadro pronto: 224, ou menos se o VSYNC seguinte chegou antes
+  A janela sao 232 linhas de varredura consecutivas a partir da linha YS, contada desde o fim
+  do VSYNC (linha 0 = a linha em que o VSYNC desce).  YS = YS0 + deslocamento, YS0 = 27, ou seja
+  TIA 27..258 com deslocamento 0.  Linhas da janela com VBLANK ligado saem pretas: tiles 0, as
+  quatro cores $0000, janela 48..207.  O player mostra cada linha do TIA na mesma linha da TV de
+  antes (o TIA 34 continua em V = 9; v. docs/DESIGN.md).
+  R2 = linhas gravadas no quadro pronto: 232, ou menos se o VSYNC seguinte chegou antes
   (as linhas alem de R2 guardam dados de quadros antigos).
   Onde a barra do HMOVE apaga os 8 primeiros pixels do Atari, os tiles trazem a fonte 0
   (COLUBK); a janela (56) e' o que os esconde.
@@ -76,12 +76,15 @@ CORES (passo 23)
 TRES BUFFERS E TRAVA
   (Aqui N = R0, o buffer pronto, nao o numero de tiles.)  R0 = buffer com o quadro completo mais recente.  Ao terminar um quadro, N passa a ser o
   buffer que estava em escrita.  O buffer do quadro seguinte so' e' escolhido quando a primeira
-  linha da janela vai ser gravada (pelo menos 21 linhas = 1,3 ms depois, com o deslocamento
-  minimo): um buffer diferente de N e do travado, de preferencia tambem diferente do N anterior.
+  linha da janela vai ser gravada (medido: pelo menos 0,64 ms depois da publicacao com o
+  deslocamento minimo -16, e 1,6 a 1,9 ms com deslocamento 0; o player usa uns 5 us entre ler
+  R0 e gravar a trava): um buffer diferente de N e do travado, de preferencia tambem diferente do N anterior.
   Uso no player: ler $2020, gravar $80|N em $2027, copiar o buffer N, e so' entao trocar ou
   liberar a trava.  Se um quadro terminar entre a leitura e a escrita da trava, o buffer lido
   continua inteiro e fica travado.
   O reset do SNES libera a trava e volta o deslocamento a 0.
+  Observacao (em estudo, ver PENDENCIAS.md): as 4 palavras de cor da ultima linha da janela
+  (entrada 231) saem ~12 us depois da publicacao do quadro, ainda dentro do buffer publicado.
 
 REGISTRADORES ($2020-$202F)
   escrita: $2020 SWCHA   $2021 SWCHB   $2022 botoes de tiro (bits 0,1)   $2024 INPT0..3
@@ -93,7 +96,7 @@ REGISTRADORES ($2020-$202F)
            $2027 trava: bit 7 = 1 trava o buffer dos bits 1:0; bit 7 = 0 libera
   leitura: $2020 (R0) bits 1:0 = N (0..2), bits 7:2 = 0
            $2021 (R1) contador de quadros   $2022 (R2) linhas gravadas no quadro pronto
-           $2023 controle   $2024-$2026 "A26"   $2027 versao = $06
+           $2023 controle   $2024-$2026 "A26"   $2027 versao = $0D
            $2028 misses   $2029 latencia do carregador
            $202A deslocamento em uso (depois do limite)
            $202B bit 6 = miss, bit 5 = FIFO estourou, bit 4 = ROM carregada (estavam em R0)

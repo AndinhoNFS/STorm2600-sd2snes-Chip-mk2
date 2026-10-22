@@ -60,7 +60,7 @@ def analyse(out, n, pal):
     e_pic = [r for r in range(E.shape[0]) if E[r].any()]
     c_pic = [y for y in range(C.shape[0]) if C[y].any()]
     rep.append("vertical (160 wide from here on): core row y = emulator row y%+d (%.1f%% of the overlapping pixels equal)" % (-dy, 100 * eq))
-    rep.append("lines: emulator window 210 rows, picture in rows %s; core captured %d rows (limit 224), picture in rows %s, "
+    rep.append("lines: emulator window 210 rows, picture in rows %s; core captured %d rows (limit 232), picture in rows %s, "
                "%d scan lines per frame (%d colour clocks = %.0f us, %.2f Hz), first line with VBLANK off = line %d after the end of VSYNC"
                % ("%d..%d" % (e_pic[0], e_pic[-1]) if e_pic else "none", C.shape[0],
                   "%d..%d" % (c_pic[0], c_pic[-1]) if c_pic else "none", meta["scan_lines"], meta["cc_frame"],

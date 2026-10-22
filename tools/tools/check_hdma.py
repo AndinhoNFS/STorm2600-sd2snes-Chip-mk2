@@ -4,7 +4,7 @@ usage: check_hdma.py     (six games, one frame each, some with input)
 For every line of the window: the four table colours must be the colour ROM applied to the
 four TIA registers as the writer sampled them (pixel 16), or black on a line with VBLANK on;
 word 0 must be k|k<<8; the window word is left | 207<<8 with left = 56 exactly on the lines
-whose pixel 0 is blanked with VBLANK off (48 otherwise); entry 224 black, window 0..255; the
+whose pixel 0 is blanked with VBLANK off (48 otherwise); entry 232 black, window 0..255; the
 tiles must be the per-pixel trace, 1:1 in columns 48..207, and zero outside."""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

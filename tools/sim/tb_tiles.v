@@ -164,13 +164,13 @@ module tb_tiles;
         $fwrite(tfd, " ");
         for (i = 0; i < 5120; i = i + 1) $fwrite(tfd, "%04x", fb[base + i]);      // header, map, 512 tiles
         $fwrite(tfd, " %0d ", fb_dropped);
-        for (i = 0; i < 224 * 256; i = i + 1) if ((i & 255) < 160) $fwrite(tfd, "%0d", refp[{fb_newest, i[15:0]}]);
+        for (i = 0; i < 232 * 256; i = i + 1) if ((i & 255) < 160) $fwrite(tfd, "%0d", refp[{fb_newest, i[15:0]}]);
         $fwrite(tfd, " ");
-        for (i = 0; i < 225; i = i + 1) $fwrite(tfd, "%04x", fb[base + 16'h2800 + i]);   // window table
+        for (i = 0; i < 233; i = i + 1) $fwrite(tfd, "%04x", fb[base + 16'h2800 + i]);   // window table
         $fwrite(tfd, " ");
-        for (i = 0; i < 224 * 256; i = i + 1) if ((i & 255) < 160) $fwrite(tfd, "%02x", refc[{fb_newest, i[15:0]}]);
+        for (i = 0; i < 232 * 256; i = i + 1) if ((i & 255) < 160) $fwrite(tfd, "%02x", refc[{fb_newest, i[15:0]}]);
         $fwrite(tfd, " ");
-        for (i = 0; i < 224; i = i + 1) $fwrite(tfd, "%07x", refl[{fb_newest, i[7:0]}]);
+        for (i = 0; i < 232; i = i + 1) $fwrite(tfd, "%07x", refl[{fb_newest, i[7:0]}]);
         $fwrite(tfd, " ");
         for (i = 0; i < 2048; i = i + 1) $fwrite(tfd, "%04x", fb[base + 16'h2000 + i]);   // colour tables
         $fwrite(tfd, "\n");

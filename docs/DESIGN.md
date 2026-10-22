@@ -1,4 +1,4 @@
-# Design: player SNES v13 + bitstream Passo 31
+# Design: player SNES v17 + bitstream Passo 34
 
 ## Quadro na PSRAM
 
@@ -7,19 +7,24 @@ Três buffers em `$70/$71/$72:8000`. Layout de cada buffer:
 | Offset | Conteúdo |
 |---|---|
 | `+$0000` | Cabeçalho; palavra 0 = N tiles distintos (N ≤ 512) |
-| `+$0010` | Mapa BG1, 28×32 entradas |
+| `+$0010` | Mapa BG1, 29×32 entradas (1.856 B, até `+$074F`) |
 | `+$0800` | Lista de tiles 2bpp, 16 B cada |
-| `+$4000 + k*$400` | Canal de cor k=0..3: 225 × `[k, k, BGR lo, BGR hi]` |
-| `+$5000` | Janela: 225 × `[esq, dir]` |
+| `+$4000 + k*$400` | Canal de cor k=0..3: 233 × `[k, k, BGR lo, BGR hi]` (932 B) |
+| `+$5000` | Janela: 233 × `[esq, dir]` (466 B) |
 
-A entrada 224 é preta.
+A entrada 232 de cada tabela é preta (regravada a cada quadro).
 
 ## Imagem
 
 - 1:1: pixels do Atari nas colunas 48..207 (tiles 6..25 do mapa). Janela
   esq=48 (56 com barra HMOVE), dir=207; o resto usa o tile 0.
-- SNES em overscan 239 (`$2133=$04`): 224 linhas de jogo, 8 pretas em cima e 7
-  embaixo (vindas do HDMA, entrada 224). `VOFF0=8`.
+- Captura de 232 linhas (TIA 27..258; `YS0=27` no gravador, mais o deslocamento
+  do registrador 6). Cada linha do TIA fica na mesma linha da TV de antes: o TIA 34
+  continua na linha V=9.
+- SNES em overscan 239 (`$2133=$04`): `VOFF0=1` (uma linha preta em cima); a
+  imagem ocupa V=2..233 e o force blank em V=233 corta a última linha (TIA 258),
+  como o v14 cortava a última em V=232. Uma linha preta embaixo vem do HDMA
+  (entrada 232).
 
 ## Cores
 
@@ -63,13 +68,15 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 
 ## Player SNES
 
-- IRQ V=232 (fase 0): force blank; trava o buffer N mais recente
-  (reg 7 = `$80|N`); DMA do mapa (1792 B de `$8010` → VRAM `$1800`) e dos N
-  tiles (N×16 B de `$8800` → VRAM `$0000`); scroll = −(VOFF+1).
-- IRQ V=0 (fase 1): display on, joypad, registradores.
+- IRQ V=233 (fase 0): force blank; trava o buffer N mais recente
+  (reg 7 = `$80|N`); DMA do mapa (1856 B de `$8010` → VRAM `$1800`) e dos N
+  tiles (N×16 B de `$8800` → VRAM `$0000`); scroll = −(VOFF+1). A janela de
+  cópia continua de 30 linhas.
+- IRQ V=1 (fase 1): display on, joypad, registradores.
 - HDMA indireto (banco `$70+N`): canais 1–4 modo 3 (`$2121/$2122`), canal 5
-  modo 1 (`$2126/$2127`). Tabelas de ponteiros em WRAM `$7E:2000 + canal*$20`,
-  dois segmentos de 112 linhas.
+  modo 1 (`$2126/$2127`). Tabelas de ponteiros em WRAM `$7E:2000 + canal*$20`:
+  1 linha preta, 232 linhas de imagem (dois segmentos de 116 por canal), 1 linha
+  preta e fim (o HDMA para em V=233).
 
 ## Registradores do core
 
@@ -85,24 +92,24 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 
 | Leitura | Função |
 |---|---|
-| `$2027` | versão (`$0B` no Passo 31) |
+| `$2027` | versão (`$0D` no Passo 34) |
 | `$202D` | descartes |
 | `$202E/F` | N do último quadro |
 
 ## Síntese
 
 ISE 14.7, XC3S400, clock de 96 MHz. A semente de placement é escolhida por
-varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0,010 ns.
+varredura (`fpga/scripts/sweep_sementes.sh`), exigindo folga ≥ 0 ns a 96 MHz (nos passos até o 31, ≥ 0,010 ns; o Passo 34 fechou com +0,003 ns).
 
-| | Passo 23 | Passo 24 | Passo 26 | Passo 27 | Passo 28b | Passo 29 | Passo 31 |
-|---|---|---|---|---|---|---|---|
-| Versão em `$2027` | `$05` | `$06` | `$07` | `$08` | `$09` | `$0A` | `$0B` |
-| Semente | 10 | 17 | 7 | 13 | 9 | 11 | 13 |
-| Folga a 96 MHz | +0,034 ns | +0,024 ns | +0,065 ns | +0,012 ns | +0,114 ns | +0,021 ns | +0,013 ns |
-| LUTs | 4982 | 5003 | 4965 | 4996 | 5232 | 5519 | 5587 (77%) |
-| Slices | 2889 | 2875 | 2897 | 2931 | 3005 | 3136 | 3155 (88%) |
-| FFs | 2205 | 2260 | 2235 | 2254 | 2258 | 2253 | 2337 |
-| BRAM | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
+| | Passo 23 | Passo 24 | Passo 26 | Passo 27 | Passo 28b | Passo 29 | Passo 31 | Passo 33 | Passo 34 |
+|---|---|---|---|---|---|---|---|---|---|
+| Versão em `$2027` | `$05` | `$06` | `$07` | `$08` | `$09` | `$0A` | `$0B` | `$0C` | `$0D` |
+| Semente | 10 | 17 | 7 | 13 | 9 | 11 | 13 | 17 | 17 |
+| Folga a 96 MHz | +0,034 ns | +0,024 ns | +0,065 ns | +0,012 ns | +0,114 ns | +0,021 ns | +0,013 ns | +0,045 ns | +0,003 ns |
+| LUTs | 4982 | 5003 | 4965 | 4996 | 5232 | 5519 | 5587 (77%) | 5487 | 5489 |
+| Slices | 2889 | 2875 | 2897 | 2931 | 3005 | 3136 | 3155 (88%) | 3110 (86%) | 3096 (86%) |
+| FFs | 2205 | 2260 | 2235 | 2254 | 2258 | 2253 | 2337 | 2677 | 2695 |
+| BRAM | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
 
 O caminho crítico continua sendo o que vai das saídas do TIA ao gravador de
 vídeo. A alocação das cores por linha do Passo 26 (item B) punha 9 níveis de
@@ -126,7 +133,7 @@ a cada ~5,5 s. Genlock é opção futura.
 
 ## Decisões
 
-- Vertical: 224 linhas centradas em 239; o OSSC corta o preto.
+- Vertical: 232 linhas em modo 239 (Passo 34); o OSSC corta o preto.
 - Horizontal: hi‑res 512 (3×) medido e descartado. O Enduro estoura 30 linhas
   de DMA, e o dicionário de 32 B pediria 20 BRAM (o Spartan‑3 tem 16).
   Escolhido 1:1 (160 colunas, imagem mais estreita). Se a proporção incomodar,

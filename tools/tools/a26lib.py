@@ -70,9 +70,9 @@ def read_fb(path):
     w = np.array([int(x, 16) for x in lines[1:1 + 16384]], np.uint16)
     n = meta["nlines"]
     ntiles = int(w[0])                                                # header: distinct tiles
-    tmap = w[8:8 + 896].astype(np.int64)                             # byte +$0010: 28 x 32 map entries
+    tmap = w[8:8 + 928].astype(np.int64)                             # byte +$0010: 29 x 32 map entries
     tlist = w[0x400:0x400 + 8192].reshape(1024, 8)                    # byte +$0800: tile i = 8 words
-    t = tlist[np.minimum(tmap, 1023)].reshape(28, 32, 8).astype(np.uint32)   # tile row, tile, line of the tile
+    t = tlist[np.minimum(tmap, 1023)].reshape(29, 32, 8).astype(np.uint32)   # tile row, tile, line of the tile
     merr = int((tmap >= max(ntiles, 1)).sum()) + int(w[1:8].any()) + int(tlist[0].any())
     run = np.maximum.accumulate(np.concatenate([[0], tmap]))[:-1]    # first appearance: at most 1 above all before
     merr += int((tmap > run + 1).sum()) + int(ntiles != int(tmap.max()) + 1)
@@ -80,22 +80,22 @@ def read_fb(path):
     bits = 7 - np.arange(8)
     p0 = (t[..., None] >> bits) & 1
     p1 = (t[..., None] >> (bits + 8)) & 1
-    src256 = (p0 | (p1 << 1)).astype(np.uint8).transpose(0, 2, 1, 3).reshape(224, 256)
+    src256 = (p0 | (p1 << 1)).astype(np.uint8).transpose(0, 2, 1, 3).reshape(232, 256)
     src = src256[:, X0:X1]
     err = int(src256[:n, :X0].any(1).sum()) + int(src256[:n, X1:].any(1).sum()) + merr   # tiles outside the picture are zero
-    pal = np.zeros((224, 4), np.uint16)
+    pal = np.zeros((232, 4), np.uint16)
     for k in range(4):
         base = 0x2000 + k * 0x200                     # byte +$4000 + k*$400
-        tb = w[base:base + 450].reshape(225, 2)
-        err += int((tb[:n, 0] != (k | (k << 8))).sum()) + int(tb[224, 0] != (k | (k << 8))) + int(tb[224, 1] != 0)
-        pal[:, k] = tb[:224, 1]
-    win = w[0x2800:0x2800 + 225]                      # byte +$5000
-    err += int(((win[:n] >> 8) != WIN_RIGHT).sum()) + int(win[224] != (255 << 8))
+        tb = w[base:base + 466].reshape(233, 2)
+        err += int((tb[:n, 0] != (k | (k << 8))).sum()) + int(tb[232, 0] != (k | (k << 8))) + int(tb[232, 1] != 0)
+        pal[:, k] = tb[:232, 1]
+    win = w[0x2800:0x2800 + 233]                      # byte +$5000
+    err += int(((win[:n] >> 8) != WIN_RIGHT).sum()) + int(win[232] != (255 << 8))
     err += int((~np.isin(win[:n] & 0xFF, [WIN_LEFT, BAR_LEFT])).sum())
-    bar = (win[:224] & 0xFF) == BAR_LEFT
+    bar = (win[:232] & 0xFF) == BAR_LEFT
     C256 = np.take_along_axis(pal, src256.astype(np.int64), 1)
     xs = np.arange(256)[None, :]                      # the window: black left of 'left' and right of 'right'
-    C256[(xs < (win[:224] & 0xFF)[:, None]) | (xs > (win[:224] >> 8)[:, None])] = 0
+    C256[(xs < (win[:232] & 0xFF)[:, None]) | (xs > (win[:232] >> 8)[:, None])] = 0
     C = C256[:, X0:X1].copy()
     meta["bar"] = int(bar[:n].sum()); meta["format_errors"] = err; meta["C256"] = C256[:n]; meta["ntiles"] = ntiles
     return meta, C[:n], src[:n], pal[:n]
