@@ -1,15 +1,17 @@
 # firmware/: modo Atari no firmware do sd2snes Mk.II
 
 O `sdcard/sd2snes/firmware.img` é o firmware do
-[ludufre/sd2snes](https://github.com/ludufre/sd2snes) no commit `1b5d9d79`
-("fix(menu): slow opening of folders with many MSU-1 games", versão
-`1.11.2-br-2.17`), compilado para o Mk.II com as mudanças desta pasta. O
+[ludufre/sd2snes](https://github.com/ludufre/sd2snes) na tag oficial
+`v1.11.2-br-v2.17` (versão `1.11.2-br-2.17`), compilado para o Mk.II com as
+mudanças desta pasta (Passo 35; o Passo 25 usou o commit `1b5d9d79`, que é a
+v2.17 mais 4 commits, e o `menu.bin` dele só existe compilando o `snes/` desse
+commit). O
 firmware é GPL versão 2; os cabeçalhos de licença e de autoria originais dos
 arquivos foram mantidos.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `mk2_atari.patch` | diferença completa em relação ao commit `1b5d9d79` (5 arquivos) |
+| `mk2_atari.patch` | diferença completa em relação à tag `v1.11.2-br-v2.17` (5 arquivos) |
 | `src/atari.c`, `src/atari.h`, `src/fpga.h`, `src/memory.c` | os quatro arquivos do firmware já modificados, inteiros |
 | `tests/host/a26_detect_cli.c` | o programa de teste no PC que roda o detector de `atari.c`; só ganhou o nome "FE" |
 
@@ -33,7 +35,7 @@ Nenhum outro arquivo do firmware foi alterado.
 
 ```
 git clone https://github.com/ludufre/sd2snes && cd sd2snes
-git checkout 1b5d9d79
+git checkout v1.11.2-br-v2.17
 git apply /caminho/para/firmware/mk2_atari.patch
 cd src && make CONFIG=config-mk2
 ```
@@ -45,7 +47,7 @@ O binário distribuído foi compilado com o conteúdo de 11 bytes `placeholder` 
 lugar dele: `make CONFIG=config-mk2 CONFIG_CFGWARE=<arquivo com "placeholder">`.
 
 O binário do Passo 25 foi compilado com arm-none-eabi-gcc 13.2.1 em 2026-10-14.
-Compilado de novo a partir do `1b5d9d79` com este patch, ele sai idêntico byte
+Compilado de novo a partir da v2.17 com este patch, ele sai idêntico byte
 a byte, menos os 4 bytes de versão do cabeçalho (bytes 4 a 7). Esses bytes são
 um hash da hora do build, então o md5 de um build novo nunca bate com o de
 `sdcard/MD5SUMS`.
@@ -77,3 +79,15 @@ Robot Tank e Thwocker foram testados só em simulação.
 
 - E0, 3F e F8SC de 8 KB continuam saindo como F8, como antes do Passo 25.
 - O Mk.III não foi compilado nem testado com estas mudanças.
+
+## Passo 35: o que mudou em relação ao Passo 25
+
+- Base: tag `v1.11.2-br-v2.17`. O `menu.bin` que acompanha é o da zip oficial
+  da v2.17 (md5 `07e111b629fb...`); com o firmware do Passo 25 ele não servia,
+  porque o firmware já gravava a marca de pasta `?` + cluster que só o menu
+  daquele commit entende (sintoma: pastas mostrando "?10", "?G").
+- O enum `A26_BS_FE` e a varredura de FE (`a26_fe_byte` e campos de
+  `a26_scan_t`) ficam dentro de `CONFIG_MK2`: o firmware do Mk.III compilado
+  com este patch é idêntico ao oficial (só os bytes 4 a 7 do cabeçalho, o hash
+  da hora do build, diferem).
+- Tamanho do Mk.II: 112.327 bytes (limite 122.880), sobra de 10.553 bytes.

@@ -4,7 +4,7 @@
 //                PSRAM once, plus a tile map.  Sits between a26_vidwr and a26_mem.
 //
 // WHY
-//   A frame is 28 x 32 = 896 tiles of 16 bytes (14 KB), but only about a hundred of
+//   A frame is 29 x 32 = 928 tiles of 16 bytes (14.5 KB), but only about a hundred of
 //   them are different (measured: at most 141 in six games).  With a map the SNES
 //   copies about 4 KB per frame instead of 14 KB.
 //
@@ -270,7 +270,7 @@ module a26_tdict (
 
         // map rows that were never written: entry 0
         S_FILL: begin
-          if (mp >= 10'd896) begin wl <= 3'd0; st <= S_HDR; end
+          if (mp >= 10'd928) begin wl <= 3'd0; st <= S_HDR; end
           else begin
             wq_valid <= 1'b1; wq_addr <= {wbuf, 14'd8 + {4'd0, mp}}; wq_data <= 16'h0000;
             pd <= 1'b0; rs <= S_FILL; st <= S_PUSH; mp <= mp + 10'd1;

@@ -116,12 +116,15 @@ typedef struct {
   uint8_t  sc_dist;       /* how many DISTINCT operands, i.e. popcount(sc_seen) */
   uint8_t  sc_lead_const; /* every 4K bank still has a constant 256-byte lead-in */
   uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
+#ifdef CONFIG_MK2
   uint8_t  fe_hist[4];    /* the 4 bytes before the current one (FE/F8 windows) */
   uint8_t  fe_seen;       /* how many of fe_hist are valid, saturates at 4 */
   uint8_t  fe_sigs;       /* bit N = FE signature N of a26_fe_sig found */
   uint8_t  f8_sta[2];     /* "STA $1FF9" / "STA $FFF9" windows, saturating */
+#endif
 } a26_scan_t;
 
+#ifdef CONFIG_MK2
 /* FE: the same five signatures and the same rule as Stella's CartDetector
    (isProbablyFE, and "isProbablyFE(image) && !f8" in the 8K branch of
    autodetectType): any one of these 5-byte sequences anywhere in an 8K image, and
@@ -154,6 +157,7 @@ static void a26_fe_byte(a26_scan_t *st, uint8_t b) {
   st->fe_hist[3] = b;
   if(st->fe_seen < 4) st->fe_seen++;
 }
+#endif /* CONFIG_MK2 */
 
 static void a26_scan_reset(a26_scan_t *st) {
   memset(st, 0, sizeof(a26_scan_t));
@@ -202,7 +206,9 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
     if(off == 0) st->sc_lead_fill = buf[i];
     else if(buf[i] != st->sc_lead_fill) st->sc_lead_const = 0;
   }
+#ifdef CONFIG_MK2
   for(i = carry; i < len; i++) a26_fe_byte(st, buf[i]);
+#endif
 
   if(len < 2) return;
   if(last) {
@@ -307,10 +313,12 @@ static uint8_t a26_superchip(const a26_scan_t *st) {
   return (uint8_t)(st->sc_lead_const && st->sc_dist >= 2);
 }
 
+#ifdef CONFIG_MK2
 /* FE: a signature, and no "potential F8" (Stella asks for 2 hits of one store). */
 static uint8_t a26_probably_fe(const a26_scan_t *st) {
   return (uint8_t)(st->fe_sigs && st->f8_sta[0] < 2 && st->f8_sta[1] < 2);
 }
+#endif
 
 static void a26_noimpl(a26_romprops_t *props, const char *param) {
   props->error = MENU_ERR_NOIMPL;
@@ -351,7 +359,7 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
       props->scheme = A26_BS_F8;
       props->size_class = 2;
       props->superchip = sc;
-#ifdef A26_HAVE_FE
+#ifdef CONFIG_MK2
       /* after the refusals above and only without Superchip evidence: Stella tests
          SC, 3F and UA before FE as well, and every other 8K image stays F8 */
       if(!sc && a26_probably_fe(st)) props->scheme = A26_BS_FE;
@@ -465,6 +473,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
   /* 3F=<score>/<positions>/<absolute stores>, SC=<flag>/<distinct read refs>,
      E0=<slice mask>: the last two of each are what the decision looks at, the
      rest is there to explain a verdict from a log alone. */
+#ifdef CONFIG_MK2
   printf("A26: %ld B scheme=%d SC=%d/%d 3F=%d/%d/%d UA=%d/%d E0=%x FE=%x/%d/%d feat16=%04x %s%s\n",
          (long)romsize, props->scheme, props->superchip, props->sc_read_refs,
          props->score_3f, props->addr_distinct_3f, props->abs_stores_3f,
@@ -472,6 +481,15 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
          props->e0_slices_hit, st.fe_sigs, st.f8_sta[0], st.f8_sta[1], props->feat16,
          props->error ? "NOIMPL:" : "ok",
          props->error ? (const char*)props->error_param : "");
+#else
+  printf("A26: %ld B scheme=%d SC=%d/%d 3F=%d/%d/%d UA=%d/%d E0=%x feat16=%04x %s%s\n",
+         (long)romsize, props->scheme, props->superchip, props->sc_read_refs,
+         props->score_3f, props->addr_distinct_3f, props->abs_stores_3f,
+         props->score_ua, props->addr_distinct_ua,
+         props->e0_slices_hit, props->feat16,
+         props->error ? "NOIMPL:" : "ok",
+         props->error ? (const char*)props->error_param : "");
+#endif
 }
 
 /* boot the SNES-side player instead of the .a26; the .a26 is staged separately */

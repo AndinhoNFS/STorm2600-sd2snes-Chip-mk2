@@ -297,7 +297,11 @@ module tia #(
                (pfi < 5'd12) ? pf1[~pfi1[2:0]]       :
                                pf2[pfi2[2:0]];
 
-  wire [1:0] pf_src = ctrlpf[1] ? (left ? 2'd2 : 2'd3) : 2'd1;   // score mode
+  // FONTE (V1, Passo 34): score mode (CTRLPF D1) only recolors the playfield while priority (D2) is off; with D2 = 1 the playfield and the ball
+  //   are COLUPF.  Stella Programmer's Guide gives D1 and D2 separately and does not describe the combination; the combination is taken from the
+  //   two witnesses: Stella 2c3d702 emucore/tia/Playfield.cxx:107 (score only if (CTRLPF & 6) == 2) and TIA.cxx:1936 ("CTRLPF D2=1, D1=ignored"),
+  //   and Atari2600_MiSTer TIA.vhd (pf_priority tested before pf_score).  [ABERTO para o console: a fonte do chip e' omissa]
+  wire [1:0] pf_src = (ctrlpf[1] & ~ctrlpf[2]) ? (left ? 2'd2 : 2'd3) : 2'd1;   // score mode
   wire       pfbl_on  = pf_on | bl_on;
   wire [1:0] pfbl_src = bl_on ? 2'd1 : pf_src;                   // ball is COLUPF
   wire       p0m0_on  = p0_on | m0_on;

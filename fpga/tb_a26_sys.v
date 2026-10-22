@@ -229,7 +229,7 @@ module tb_a26_sys;
     sreg_rd(3'd1, v);
     if (v == 8'h00) begin errs = errs + 1; $display("FAIL  no frame published"); end
     else $display("ok    frames published = %0d", v);
-    sreg_rd(3'd2, v); expect8("picture lines", v, 8'hE0);        // 224 = MAXLINES
+    sreg_rd(3'd2, v); expect8("picture lines", v, 8'hE8);        // 232 = MAXLINES
 
     // ---- diagnostics: no miss, and a latency inside the CPU cycle (~80 clk) ----
     sreg_rd(4'd8, v); expect8("miss counter", v, 8'h00);
@@ -262,7 +262,7 @@ module tb_a26_sys;
       errs = errs + 1;
       $display("FAIL  frame buffer: %0d wrong tile words, %0d wrong map entries", bad_a, bad_b);
     end else
-      $display("ok    frame buffer: map and tile list give the playfield (224 lines, 20 tiles 1:1 in columns 6..25)");
+      $display("ok    frame buffer: map and tile list give the playfield (232 lines, 20 tiles 1:1 in columns 6..25)");
     expect8("header: distinct tiles", slot.mem[base], 8'h02);
     expect8("header: high byte and word 1",  slot.mem[base + 1] | slot.mem[base + 2] | slot.mem[base + 3], 8'h00);
     sreg_rd(4'd13, v); expect8("dropped frames", v, 8'h00);
@@ -280,12 +280,12 @@ module tb_a26_sys;
     idx = base + 20'h5000 + 40 * 2;
     expect8("window table, line 40: left",   slot.mem[idx],     8'd48);
     expect8("window table, line 40: right",  slot.mem[idx + 1], 8'd207);
-    idx = base + 20'h4400 + 224 * 4;
-    expect8("COLUPF table, entry 224: black", slot.mem[idx + 2] | slot.mem[idx + 3], 8'h00);
-    expect8("COLUPF table, entry 224: index", slot.mem[idx], 8'h01);
-    idx = base + 20'h5000 + 224 * 2;
-    expect8("window table, entry 224: left",  slot.mem[idx],     8'd0);
-    expect8("window table, entry 224: right", slot.mem[idx + 1], 8'd255);
+    idx = base + 20'h4400 + 232 * 4;
+    expect8("COLUPF table, entry 232: black", slot.mem[idx + 2] | slot.mem[idx + 3], 8'h00);
+    expect8("COLUPF table, entry 232: index", slot.mem[idx], 8'h01);
+    idx = base + 20'h5000 + 232 * 2;
+    expect8("window table, entry 232: left",  slot.mem[idx],     8'd0);
+    expect8("window table, entry 232: right", slot.mem[idx + 1], 8'd255);
 
     if (errs == 0) $display("PASS  a26 system");
     else           $display("FAILED  %0d error(s)", errs);

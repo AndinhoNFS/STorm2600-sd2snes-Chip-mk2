@@ -35,7 +35,7 @@ module tb_a26_vidwr;
   reg  [1:0]  pal = 0;                 // palette register (write register 8)
   integer     epal = 0;                // palette the frame being checked must have
 
-  localparam YS0 = 34;
+  localparam YS0 = 27;
   reg     sink_ok = 1;                 // 0: the PSRAM side takes no word from the dictionary
 
   a26_vidwr #(.YS0(YS0), .DLY(2)) dut (.clk(clk), .rst(rst),
@@ -65,7 +65,7 @@ module tb_a26_vidwr;
   reg     vs_mid = 0;
 
   // ---- monitors -------------------------------------------------------------------
-  // writes per line (a line may carry 32 tile words + 9 table words + 1 word of entry 224),
+  // writes per line (a line may carry 32 tile words + 9 table words + 1 word of entry 232),
   // writes into the locked buffer, writes into a buffer that does not exist, and how
   // often the newest buffer changed
   integer wr_line = 0, wr_line_max = 0, lock_wr = 0, bad_buf = 0, n_changes = 0, lock_arm = 0;
@@ -243,7 +243,7 @@ module tb_a26_vidwr;
     begin
       bad_t = 0; bad_p = 0; base = b * 16384;
       if (e_frm[f & 31] !== f) begin errs = errs + 1; $display("FAIL  %0s: model slot of frame %0d holds frame %0d", nm, f, e_frm[f & 31]); end
-      for (ty = 0; ty < 28; ty = ty + 1)
+      for (ty = 0; ty < 29; ty = ty + 1)
         for (tx = 0; tx < 32; tx = tx + 1)
           for (r = 0; r < 8; r = r + 1) if (ty * 8 + r < nl) begin
             row = ty * 8 + r; line = 3 + YS0 + ofs + row; y = line - 40;
@@ -285,17 +285,17 @@ module tb_a26_vidwr;
         if (mem[base + 16'h2600 + row * 2 + 1] !== (blank ? 16'h0000 : colw(3, line, f)))  bad_p = bad_p + 1;
         if (mem[base + 16'h2800 + row] !== {8'd207, (!blank && !visf(0, y, f)) ? 8'd56 : 8'd48}) bad_p = bad_p + 1;
       end
-      // entry 224: black in every channel, full window
-      if (mem[base + 16'h2000 + 448] !== 16'h0000 || mem[base + 16'h2000 + 449] !== 16'h0000) bad_p = bad_p + 1;
-      if (mem[base + 16'h2200 + 448] !== 16'h0101 || mem[base + 16'h2200 + 449] !== 16'h0000) bad_p = bad_p + 1;
-      if (mem[base + 16'h2400 + 448] !== 16'h0202 || mem[base + 16'h2400 + 449] !== 16'h0000) bad_p = bad_p + 1;
-      if (mem[base + 16'h2600 + 448] !== 16'h0303 || mem[base + 16'h2600 + 449] !== 16'h0000) bad_p = bad_p + 1;
-      if (mem[base + 16'h2800 + 224] !== {8'd255, 8'd0}) bad_p = bad_p + 1;
+      // entry 232: black in every channel, full window
+      if (mem[base + 16'h2000 + 464] !== 16'h0000 || mem[base + 16'h2000 + 465] !== 16'h0000) bad_p = bad_p + 1;
+      if (mem[base + 16'h2200 + 464] !== 16'h0101 || mem[base + 16'h2200 + 465] !== 16'h0000) bad_p = bad_p + 1;
+      if (mem[base + 16'h2400 + 464] !== 16'h0202 || mem[base + 16'h2400 + 465] !== 16'h0000) bad_p = bad_p + 1;
+      if (mem[base + 16'h2600 + 464] !== 16'h0303 || mem[base + 16'h2600 + 465] !== 16'h0000) bad_p = bad_p + 1;
+      if (mem[base + 16'h2800 + 232] !== {8'd255, 8'd0}) bad_p = bad_p + 1;
       // the map: numbers in order of first appearance (each entry is at most one more than
       // the largest before it), no two numbers with the same 8 words, tile 0 = zero, and
       // the header = how many numbers were used; words 1..7 of the header are 0
       bad_m = 0; nmax = 0;
-      for (ty = 0; ty < 896; ty = ty + 1) begin
+      for (ty = 0; ty < 928; ty = ty + 1) begin
         i2 = mem[base + 8 + ty];
         if (i2 > nmax + 1 || i2 > 1023) bad_m = bad_m + 1;
         if (i2 > nmax) nmax = i2;
@@ -347,64 +347,64 @@ module tb_a26_vidwr;
     run_lines(1, 1, 4);
     expect_val("frames 3 lines later", fb_frames, 1);
     expect_val("newest buffer",        fb_newest, 1);
-    expect_val("lines written",        fb_nlines, 224);
+    expect_val("lines written",        fb_nlines, 232);
     run_lines(1, 4, 262);
-    check_buf(1, 0, "buffer 1 = frame 0", 0, 224);
+    check_buf(1, 0, "buffer 1 = frame 0", 0, 232);
     expect_val("tile count register = header", tile_n, last_n);
-    // buffer row 3 is picture line 0 (scan line 40 = 3 + 34 + 3); the HMOVE-bar line is row 13
-    expect_val("window left, row 13 (HMOVE bar)", mem[16384 + 16'h2800 + 13][7:0], 56);
-    expect_val("window left, row 12",   mem[16384 + 16'h2800 + 12][7:0], 48);
-    expect_val("window left, row 14",   mem[16384 + 16'h2800 + 14][7:0], 48);
-    expect_val("window right, row 13",  mem[16384 + 16'h2800 + 13][15:8], 207);
-    // buffer row r = scan line 37 + r; the colour words are the model's (row 13 = line 50)
-    expect_val("index 0 colour, row 13", mem[16384 + 16'h2000 + 27], colw(0, 50, 0));
-    expect_val("index 3 colour, row 13", mem[16384 + 16'h2600 + 27], colw(3, 50, 0));
-    expect_val("COLUP1 row 2 (VBLANK) = black", mem[16384 + 16'h2600 + 5], 0);
-    expect_val("index 3 colour, row 3",   mem[16384 + 16'h2600 + 7], colw(3, 40, 0));
-    expect_val("index 3 colour, row 194", mem[16384 + 16'h2600 + 389], colw(3, 231, 0));
-    expect_val("COLUP1 row 195 (VBLANK) = black", mem[16384 + 16'h2600 + 391], 0);
+    // buffer row 10 is picture line 0 (scan line 40 = 3 + 27 + 10); the HMOVE-bar line is row 20
+    expect_val("window left, row 20 (HMOVE bar)", mem[16384 + 16'h2800 + 20][7:0], 56);
+    expect_val("window left, row 19",   mem[16384 + 16'h2800 + 19][7:0], 48);
+    expect_val("window left, row 21",   mem[16384 + 16'h2800 + 21][7:0], 48);
+    expect_val("window right, row 20",  mem[16384 + 16'h2800 + 20][15:8], 207);
+    // buffer row r = scan line 30 + r; the colour words are the model's (row 20 = line 50)
+    expect_val("index 0 colour, row 20", mem[16384 + 16'h2000 + 41], colw(0, 50, 0));
+    expect_val("index 3 colour, row 20", mem[16384 + 16'h2600 + 41], colw(3, 50, 0));
+    expect_val("COLUP1 row 9 (VBLANK) = black", mem[16384 + 16'h2600 + 19], 0);
+    expect_val("index 3 colour, row 10",  mem[16384 + 16'h2600 + 21], colw(3, 40, 0));
+    expect_val("index 3 colour, row 201", mem[16384 + 16'h2600 + 403], colw(3, 231, 0));
+    expect_val("COLUP1 row 202 (VBLANK) = black", mem[16384 + 16'h2600 + 405], 0);
     expect_val("map entry of a VBLANK tile row (row 27)", mem[16384 + 8 + 27 * 32 + 5], 0);
     expect_val("colour ROM entry 7 (white, Color-1)", bgr[7], 16'h77BD);
     begin : hmcount
       integer nset;
       nset = 0;
-      for (q = 0; q < 224; q = q + 1) if (mem[16384 + 16'h2800 + q][7:0] == 8'd56) nset = nset + 1;
+      for (q = 0; q < 232; q = q + 1) if (mem[16384 + 16'h2800 + q][7:0] == 8'd56) nset = nset + 1;
       expect_val("lines with the bar in frame 0", nset, 1);
       // nothing may land outside header, map, the tiles in use and the five tables
       nset = 0;
       for (q = 0; q < 16384; q = q + 1)
         if (mem[16384 + q] !== 16'h0000
-            && !(q < 8 + 896) && !(q >= 16'h0400 && q < 16'h0400 + last_n * 8)
-            && !(q >= 16'h2000 && q < 16'h2000 + 450) && !(q >= 16'h2200 && q < 16'h2200 + 450)
-            && !(q >= 16'h2400 && q < 16'h2400 + 450) && !(q >= 16'h2600 && q < 16'h2600 + 450)
-            && !(q >= 16'h2800 && q < 16'h2800 + 225)) nset = nset + 1;
+            && !(q < 8 + 928) && !(q >= 16'h0400 && q < 16'h0400 + last_n * 8)
+            && !(q >= 16'h2000 && q < 16'h2000 + 466) && !(q >= 16'h2200 && q < 16'h2200 + 466)
+            && !(q >= 16'h2400 && q < 16'h2400 + 466) && !(q >= 16'h2600 && q < 16'h2600 + 466)
+            && !(q >= 16'h2800 && q < 16'h2800 + 233)) nset = nset + 1;
       expect_val("words written outside the layout", nset, 0);
     end
 
     run_frame(2);                                         // publishes frame 1
     expect_val("frames after frame 2", fb_frames, 2);
     expect_val("newest buffer",        fb_newest, 2);
-    check_buf(2, 1, "buffer 2 = frame 1", 0, 224);
+    check_buf(2, 1, "buffer 2 = frame 1", 0, 232);
     run_frame(3);
     expect_val("newest buffer",        fb_newest, 0);
-    check_buf(0, 2, "buffer 0 = frame 2", 0, 224);
+    check_buf(0, 2, "buffer 0 = frame 2", 0, 232);
 
     // ---- vertical offset: taken when VSYNC ends -----------------------------------------
     yofs = -7'sd16;                                       // window 16 lines earlier
     run_frame(4);                                         // publishes frame 3 (offset 0)
     run_frame(5);                                         // publishes frame 4, offset -16
-    expect_val("lines, offset -16", fb_nlines, 224);
-    check_buf(fb_newest, 4, "offset -16: frame 4", -16, 224);
-    yofs = 7'sd47;                                        // 47 lines later: only 178 lines fit,
-    run_frame(6); run_frame(7);                           // 22 tile rows and 2 lines of the 23rd
-    expect_val("lines, offset +47", fb_nlines, 178);
-    check_buf(fb_newest, 6, "offset +47: frame 6", 47, 178);
-    expect_val("map of an unwritten row (row 23) = 0", mem[fb_newest * 16384 + 8 + 23 * 32 + 9], 0);
-    expect_val("map of an unwritten row (row 27) = 0", mem[fb_newest * 16384 + 8 + 27 * 32 + 31], 0);
+    expect_val("lines, offset -16", fb_nlines, 232);
+    check_buf(fb_newest, 4, "offset -16: frame 4", -16, 232);
+    yofs = 7'sd47;                                        // 47 lines later: only 185 lines fit,
+    run_frame(6); run_frame(7);                           // 23 tile rows and 1 line of the 24th
+    expect_val("lines, offset +47", fb_nlines, 185);
+    check_buf(fb_newest, 6, "offset +47: frame 6", 47, 185);
+    expect_val("map of an unwritten row (row 24) = 0", mem[fb_newest * 16384 + 8 + 24 * 32 + 9], 0);
+    expect_val("map of an unwritten row (row 28) = 0", mem[fb_newest * 16384 + 8 + 28 * 32 + 31], 0);
     yofs = 7'sd0;
     run_frame(8); run_frame(9);                           // publishes frame 8
-    expect_val("lines, offset 0 again", fb_nlines, 224);
-    check_buf(fb_newest, 8, "offset 0 again: frame 8", 0, 224);
+    expect_val("lines, offset 0 again", fb_nlines, 232);
+    check_buf(fb_newest, 8, "offset 0 again: frame 8", 0, 232);
 
     // ---- palette (write register 8): taken when VSYNC ends, so a change written in the middle of a
     // ---- frame leaves that frame alone and applies from the next one on ----------------------------
@@ -424,20 +424,20 @@ module tb_a26_vidwr;
         end
       run_lines(20, 0, 130); pal = 2'd1; run_lines(20, 130, 262);   // switched at picture line 90
       run_lines(21, 0, 4);                                           // publishes frame 20
-      epal = 0; check_buf(fb_newest, 20, "pal=1 mid-frame: frame Color-1", 0, 224);
+      epal = 0; check_buf(fb_newest, 20, "pal=1 mid-frame: frame Color-1", 0, 232);
       expect_val("palette in use after the VSYNC of frame 21", dut.pal_f, 1);
       run_lines(21, 4, 200); pal = 2'd2; run_lines(21, 200, 262);   // switched again, late in the window
       run_lines(22, 0, 4);
-      epal = 1; check_buf(fb_newest, 21, "next frame: Color-2", 0, 224);
+      epal = 1; check_buf(fb_newest, 21, "next frame: Color-2", 0, 232);
       run_lines(22, 4, 20); pal = 2'd3; run_lines(22, 20, 262);     // switched in VBLANK, before the window
       run_lines(23, 0, 4);
-      epal = 2; check_buf(fb_newest, 22, "next frame: Color-3", 0, 224);
+      epal = 2; check_buf(fb_newest, 22, "next frame: Color-3", 0, 232);
       run_lines(23, 4, 262);
       run_lines(24, 0, 2); pal = 2'd0; run_lines(24, 2, 4);         // written during VSYNC: this frame
-      epal = 3; check_buf(fb_newest, 23, "next frame: Black/White", 0, 224);
+      epal = 3; check_buf(fb_newest, 23, "next frame: Black/White", 0, 232);
       run_lines(24, 4, 262);
       run_lines(26, 0, 4);
-      epal = 0; check_buf(fb_newest, 24, "pal=0 in VSYNC: Color-1 now", 0, 224);
+      epal = 0; check_buf(fb_newest, 24, "pal=0 in VSYNC: Color-1 now", 0, 232);
       run_lines(26, 4, 262);
     end
 
@@ -445,11 +445,11 @@ module tb_a26_vidwr;
     // ---- so the window starts one scan line earlier than when it ends in the next HBLANK
     vs_mid = 1;
     run_frame(10); run_frame(11);                         // publishes frame 10
-    expect_val("lines, VSYNC ending mid-line", fb_nlines, 224);
-    check_buf(fb_newest, 10, "VSYNC ending mid-line: frame 10", -1, 224);
+    expect_val("lines, VSYNC ending mid-line", fb_nlines, 232);
+    check_buf(fb_newest, 10, "VSYNC ending mid-line: frame 10", -1, 232);
     vs_mid = 0;
     run_frame(8); run_frame(9);                           // back to normal; publishes frame 8
-    check_buf(fb_newest, 8, "VSYNC ending in HBLANK again", 0, 224);
+    check_buf(fb_newest, 8, "VSYNC ending in HBLANK again", 0, 232);
 
     // ---- more distinct tiles than the dictionary holds: the frame is dropped ---------------
     run_lines(100, 0, 4);                                 // (publishes frame 9)
@@ -465,7 +465,7 @@ module tb_a26_vidwr;
     expect_val("newest buffer: words changed by the drop", rd_bad, 0);
     run_frame(13);                                        // publishes frame 12: back to normal
     expect_val("frames after the drop", fb_frames, (q + 1) & 255);
-    check_buf(fb_newest, 12, "first frame after the drop", 0, 224);
+    check_buf(fb_newest, 12, "first frame after the drop", 0, 232);
     expect_val("dropped frames, still", fb_dropped, 1);
 
     // ---- lock: the SNES copies one buffer, 64 words every 5 scan lines, while the core --------
@@ -490,7 +490,7 @@ module tb_a26_vidwr;
     for (piece = 0; piece < 16384; piece = piece + 1) if (snap[piece] !== ref[piece]) rd_bad = rd_bad + 1;
     expect_val("words of the read that differ", rd_bad, 0);
     for (piece = 0; piece < 16384; piece = piece + 1) mem[49152 + piece] = snap[piece];   // buffer 3 does not exist: scratch
-    check_buf(3, 13, "what the SNES read = frame 13", 0, 224);
+    check_buf(3, 13, "what the SNES read = frame 13", 0, 232);
     if (fb_newest == lk[1:0]) begin errs = errs + 1; $display("FAIL  newest is still the locked buffer"); end
 
     // ---- the newest buffer changes between the read of R0 and the write of the lock ---------
@@ -527,7 +527,7 @@ module tb_a26_vidwr;
     expect_val("writes to / reports of a buffer 3", bad_buf, 0);
     lock_v = 0; lock_arm = 0;
     run_frame(f); run_frame(f + 1);
-    check_buf(fb_newest, f, "after the lock: newest frame", 0, 224);
+    check_buf(fb_newest, f, "after the lock: newest frame", 0, 232);
     expect_val("dropped frames before the stall", fb_dropped, 1);
 
     // ---- the PSRAM side stalls for 80 lines after a frame: that frame is published late but
@@ -540,7 +540,7 @@ module tb_a26_vidwr;
     sink_ok = 1;
     run_lines(f + 2, 80, 262);
     expect_val("frames after the stall", fb_frames, (q + 1) & 255);
-    check_buf(fb_newest, f + 1, "frame published late", 0, 224);
+    check_buf(fb_newest, f + 1, "frame published late", 0, 232);
     expect_val("dropped frames: the one left out", fb_dropped, 2);
     n0 = fb_newest;
     run_frame(f + 3);                                     // frame f+2 had no line: nothing is published
@@ -548,13 +548,13 @@ module tb_a26_vidwr;
     expect_val("newest after the left-out frame", fb_newest, n0);
     run_frame(f + 4);                                     // publishes frame f+3
     expect_val("frames, back to normal", fb_frames, (q + 2) & 255);
-    check_buf(fb_newest, f + 3, "first frame after the stall", 0, 224);
+    check_buf(fb_newest, f + 3, "first frame after the stall", 0, 232);
     expect_val("dropped frames at the end", fb_dropped, 2);
 
     // Passo 26: colours changed after pixel 16 on lines with four colours (frame 50)
     lock_v = 0;
     run_frame(50); run_frame(51);                         // publishes frame 50
-    check_buf(fb_newest, 50, "4 colours, mid-line (frame 50)", 0, 224);
+    check_buf(fb_newest, 50, "4 colours, mid-line (frame 50)", 0, 232);
     if (n_fix == 0) begin errs = errs + 1; $display("FAIL  the test pattern never exercised the colour allocation"); end
     else $display("ok    colour allocation: %0d pixels of frame 0 checked with an index other than their source", n_fix);
     if (n_spec == 0 || n_spec_bad != 0) begin errs = errs + 1; $display("FAIL  shown colour = final colour on lines with <= 4 colours: %0d of %0d pixels wrong", n_spec_bad, n_spec); end
