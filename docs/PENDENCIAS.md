@@ -7,8 +7,19 @@
   cor) têm mais de 4. Opções estudadas (8 paletas por tile com HDMA, 16 cores
   por linha): ganhariam de 25 a 41 ROMs, com player, gravador e orçamento de
   DMA novos; não feitas.
-- **Superchip** (RAM de 128 bytes no cartucho): 114 arquivos da coleção. Os 16
-  BRAMs estão em uso; em LUT-RAM caberia, mas os slices estão em 88%.
+- **F4SC e jogos de 32 KB**: a ROM do core é de 16 KB de BRAM e o F4 aliasa os
+  bancos 4 a 7 nos 0 a 3. Frente futura: avaliar servir a ROM pela PSRAM em
+  vez de BRAM (a porta `rom_rd`/`rom_ack` já existe; o risco é a latência: a
+  resposta tem de chegar em cerca de 3 clocks de cor). Libera o F4SC (26 ROMs
+  distintas, ex. Fatal Run) e os demais de 32 KB.
+- **Superchip F8SC e F6SC, 54 de 88 ROMs ainda não OK contra o Stella** (Passo
+  36; ver abaixo): 6 com 1 pixel de diferença no TIA, 25 com 18 a 94 pixels
+  (detalhe do TIA), 1 limite de captura, 8 com um bloco fixo de linhas
+  diferente (hipótese: o Stella enche a RAM do cartucho com valores aleatórios,
+  o core parte de zero), 14 cuja diferença varia com o tempo (podem ser o
+  estado inicial da RAM ou erro do Superchip; a verificar com o Stella com a
+  RAM zerada). Uma leitura da porta de escrita ($1000-$107F) devolve o byte da
+  ROM e não grava; o console grava o valor do barramento.
 - **Mappers não suportados**: E0, E7, FA/12K, 64K, CV, UA, Supercharger.
 - **Imagem PAL**: passa das 232 linhas que o SNES mostra (115 ROMs da
   coleção, medido com 224). O registrador de deslocamento (`$2026`) existe; falta o player
@@ -39,6 +50,22 @@ mais novo e grava a trava) da trava dos 3 buffers com a captura de 232 linhas:
   a publicação até essas palavras saírem (até 1 linha de atraso, bit novo).
 - Fica em observação até confirmar a olho nu no console e fazer o A/B com o
   Passo 33 + player v14.
+
+## Aprovado no console (Passo 36, Superchip F8SC e F6SC, 23/10/2026)
+
+Bit `fpga_atari.bit` md5 `d33d69b587c485e9435126053061b8a9` (versão `$0E`,
+semente 7), `firmware.img` (Passo 36) md5 `789fb4f590d76aebfc09a745adb1bfd1` e
+`atari_snes.bin` (player v17, inalterado) md5 `4074bd4c8861c1dd586a8799d16e412f`.
+Testado no console: as duas ROMs de teste do Superchip (`sc_ram_f8sc` e
+`sc_ram_f6sc`, em verde), Dig Dug, Crystal Castles, Klax, Secret Quest, Desert
+Falcon, Jr. Pac-Man, Millipede e Stargate; River Raid, Pitfall, Bobby Is Going
+Home e Decathlon iguais ao Passo 35.
+
+Em simulação (88 ROMs F8SC/F6SC, contra o Stella): 34 OK com a RAM contra 8 sem
+ela, 26 viraram OK, nenhuma piorou. As 516 ROMs da régua: iguais, pixel a
+pixel, com o Superchip desligado. Folga de timing de **+0,001 ns** a 96 MHz
+(semente 7; é a menor já publicada): qualquer mudança no core pede nova varredura
+de sementes. 5.455 LUTs, 3.141 slices (87%).
 
 ## Aprovado no console (Passos 34 e 35 + player v17, 22/10/2026)
 

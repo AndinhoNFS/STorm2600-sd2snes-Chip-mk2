@@ -15,14 +15,41 @@ Projetos de base:
 | Item | Versão |
 |---|---|
 | Player SNES | v17 (`atari_snes.bin`, md5 `4074bd4c…`) |
-| Bitstream FPGA | Passo 34 (`fpga_atari.bit`, md5 `a6769dd1…`), versão `$0D` em `$2027` |
-| Firmware | Passo 35 (`firmware.img`, md5 `ae29494a…`), sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes; detecta o mapper FE |
-| Uso do FPGA | 5489/7168 LUTs, 3096/3584 slices (86%), 16/16 BRAM, folga +0,003 ns a 96 MHz |
+| Bitstream FPGA | Passo 36 (`fpga_atari.bit`, md5 `d33d69b5…`), versão `$0E` em `$2027` |
+| Firmware | Passo 36 (`firmware.img`, md5 `789fb4f5…`), sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes; detecta o mapper FE e o Superchip |
+| Uso do FPGA | 5455/7168 LUTs, 3141/3584 slices (87%), 16/16 BRAM, folga +0,001 ns a 96 MHz |
 
-Passo 34 + Passo 35 + player v17 aprovados pelo autor no console em 22/10/2026. Passo 33 + player v14 aprovados em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
+Passo 36 + player v17 aprovados pelo autor no console em 23/10/2026. Passo 34 + Passo 35 + player v17 aprovados em 22/10/2026. Passo 33 + player v14 aprovados em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
 Histórico de testes no console: Passo 23 (Pitfall, River Raid, Pac‑Man, Enduro,
 Frostbite e Boxing corretos), Passos 24/25 (Decathlon original abre), Passo 26
 (Crackpots e Decathlon sem os pixels da bola fora do lugar).
+
+### Passo 36 (Superchip F8SC e F6SC) + player v17: aprovado no console em 23/10/2026
+
+Branch [`passo36`](../../tree/passo36), release `v0.11-p36`.
+
+- **Superchip** (RAM de 128 bytes no cartucho) nos cartuchos de 8 KB (F8SC) e
+  16 KB (F6SC): escrita em `$1000-$107F`, leitura em `$1080-$10FF`, a RAM vale
+  para todos os bancos. É RAM distribuída (LUTs), porque os 16 blocos de RAM do
+  FPGA estão em uso; o bit 5 do registrador 3 liga a RAM (versão `$0E`).
+- **Firmware**: um `.a26` de 8 KB ou 16 KB vale como Superchip pela regra de
+  antes ou pela do Stella (os primeiros 128 bytes de cada banco de 4 KB se
+  repetem nos 128 seguintes); o bit vai no byte do mapper e o player v17, que
+  não mudou, o passa ao core. Na coleção só 8 arquivos mudam de classificação.
+- **Testado no console**: as duas ROMs de teste (`tools/tia_tests`, `sc_ram_f8sc`
+  e `sc_ram_f6sc`, tela verde quando a RAM escreve, lê e vale nos dois bancos),
+  Dig Dug, Crystal Castles, Klax, Secret Quest, Desert Falcon, Jr. Pac-Man,
+  Millipede e Stargate. River Raid, Pitfall, Bobby Is Going Home e Decathlon
+  ficam iguais ao Passo 35.
+- **Em simulação** (88 ROMs F8SC/F6SC, contra o Stella, quadros 10, 60 e 300, sem
+  tecla): 34 OK com a RAM contra 8 sem ela; nenhuma piorou. As 516 ROMs da
+  régua dão o mesmo resultado de antes, pixel a pixel, com o Superchip desligado.
+  Os 54 que não ficam OK estão listados em `docs/PENDENCIAS.md`.
+- **Fora**: o F4SC (32 KB, 26 ROMs distintas, ex. Fatal Run) e os jogos de
+  32 KB em geral, porque a ROM do core tem 16 KB de BRAM. Ver `docs/PENDENCIAS.md`.
+- Síntese: versão `$0E` em `$2027`, 5.455 LUTs, 3.141 slices (87%), 16/16 BRAM,
+  folga **+0,001 ns** a 96 MHz (semente 7; as sementes 17, 13, 11 e 9 não
+  fecharam). Qualquer mudança no core pede nova varredura de sementes.
 
 ### Passos 34 e 35 + player v17: aprovados no console em 22/10/2026
 
@@ -169,9 +196,10 @@ partir do quadro seguinte; durante a pausa o X é ignorado.
 
 ## Limitações conhecidas
 
-- **Superchip** (RAM extra de 128 bytes no cartucho): não implementada; os 16
-  blocos de RAM do FPGA estão em uso. Na coleção testada, 114 arquivos (106
-  ROMs distintas) usam Superchip.
+- **Superchip** (RAM extra de 128 bytes no cartucho): implementada em F8SC e
+  F6SC (Passo 36). Fora o F4SC, que pede ROM de 32 KB (26 ROMs distintas, ex.
+  Fatal Run): a ROM do core é de 16 KB, então esses `.a26` rodam como F4 comum e
+  os jogos de 32 KB em geral continuam sem o banco 4 a 7.
 - **Mappers**: suportados 2K, 4K, F8, F6, F4 e FE. Os demais (E0, E7, FA/12K,
   64K, CV, UA, 3F, Supercharger e tamanhos fora do padrão) não.
 - **Imagem PAL cortada**: o SNES mostra 232 linhas; jogos PAL têm 228 a 250, e
@@ -269,15 +297,15 @@ Só para o sd2snes **Mk.II**.
    `atari_snes.bin` e `firmware.img` — para a pasta `sd2snes` do cartão,
    substituindo o `firmware.img`.
 4. Se quiser, confira os md5 (`sdcard/MD5SUMS`):
-   `fpga_atari.bit` `a6769dd1c0da788fbd5450242752753f`,
+   `fpga_atari.bit` `d33d69b587c485e9435126053061b8a9`,
    `atari_snes.bin` `4074bd4c8861c1dd586a8799d16e412f`,
-   `firmware.img` `ae29494ac8d370b263aef5a1042c5b79`.
+   `firmware.img` `789fb4f590d76aebfc09a745adb1bfd1`.
 5. Ponha as ROMs `.a26` em qualquer pasta do cartão e ligue o console. Na
    primeira partida o bootloader grava o `firmware.img`. Na primeira vez que
    abrir um `.a26`, o menu da 2.17 pede a confirmação de "core experimental"
    (dá para marcar "não avisar de novo").
 
-Testado no console com o firmware do Passo 35 e o pacote oficial v1.11.2-br-v2.17
+Testado no console com o firmware do Passo 36 e o pacote oficial v1.11.2-br-v2.17
 inteiro. Como voltar atrás está em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
 ROMs de Atari não são distribuídas com este projeto.
 
