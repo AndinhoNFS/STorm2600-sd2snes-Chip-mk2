@@ -15,7 +15,7 @@ module tb_trace;
 
   reg [7:0] rom [0:32767];
   reg [1023:0] romfile, outp;
-  integer mapper_i, f0, f1, f2, rst0, rst1, joy0, joy1, joyv, h0, fire_i;   // +fire=<frame>: fire button held from that frame
+  integer sc_i = 0, mapper_i, f0, f1, f2, rst0, rst1, joy0, joy1, joyv, h0, fire_i;   // +fire=<frame>: fire button held from that frame
   integer frame = 0;
   // +yofs=<n> signed vertical offset of the window (-16..47);  +pz_on=<clk> +pz_per=<clk>: pause held for pz_on out of every pz_per clk
   integer yofs_i, pz_on, pz_per, pz_cnt = 0;
@@ -45,7 +45,7 @@ module tb_trace;
   wire [15:0] cpu_ab;
 
   a26_core #(.CC_INC(25'd8388608)) core (
-    .clk(clk), .rst(rst), .mapper(mapper_i[2:0]),
+    .clk(clk), .rst(rst), .mapper(mapper_i[2:0]), .sc_en(sc_i[0]),
     .swcha_in(swcha), .swchb_in(swchb), .fire0(~(fire_i >= 0 && frame >= fire_i)), .fire1(1'b1), .inpt(4'h0), .pause(pause),
     .rom_addr(rom_addr), .rom_rd(rom_rd), .rom_data(rom_data), .rom_ack(rom_ack),
     .pix_stb(pix_stb), .pix_x(pix_x), .pix_vis(pix_vis), .pix_src(pix_src), .pix_col(pix_col),
@@ -153,6 +153,7 @@ module tb_trace;
     if (!$value$plusargs("rom=%s", romfile)) begin $display("no +rom"); $finish; end
     if (!$value$plusargs("out=%s", outp)) outp = "frame";
     if (!$value$plusargs("mapper=%d", mapper_i)) mapper_i = 1;
+    if (!$value$plusargs("sc=%d", sc_i)) sc_i = 0;                 // Superchip RAM (F8 / F6)
     if (!$value$plusargs("f0=%d", f0)) f0 = 2;
     if (!$value$plusargs("f1=%d", f1)) f1 = f0;
     if (!$value$plusargs("f2=%d", f2)) f2 = f1;

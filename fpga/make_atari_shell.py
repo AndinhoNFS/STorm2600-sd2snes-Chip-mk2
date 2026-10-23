@@ -278,6 +278,10 @@ TIMESPEC TS_a26_vid  = FROM "a26_slow_vid"  TO "a26_slow_vid"  125 ns;
 # RIOT RAM: its output changes one clk after cpu_ce and only feeds cpu_din.
 INST "snes_a26/core/u_riot/Mram_ram" TNM = RAMS "a26_riot_ram";
 TIMESPEC TS_a26_riot = FROM "a26_riot_ram" TO "a26_slow_core" 125 ns;
+# Superchip RAM (128 x 8 of distributed RAM in a26_core, Passo 36): same reasoning as the RIOT RAM, its
+# registered output (sc_q) changes one clk after the address and only feeds cpu_din.
+INST "snes_a26/core/Mram_sc_ram*" TNM = RAMS "a26_sc_ram";
+TIMESPEC TS_a26_sc = FROM "a26_sc_ram" TO "a26_slow_core" 125 ns;
 # Cartridge ROM (16 KB of block RAM in a26_mem): its read address changes only on
 # rom_rd and a26_mem holds rom_ack back for ACK_DLY clk, so the output has been
 # stable for 15 clk when the core registers it.  Do not shorten ACK_DLY below 12.

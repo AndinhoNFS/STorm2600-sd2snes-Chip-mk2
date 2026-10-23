@@ -242,13 +242,61 @@ module tb_a26_top;
     end
   endtask
 
+  // Superchip (F6SC, Passo 36): register 3 bit 5.  The first 256 bytes of every bank are the RAM, code starts at $F100.
+  //   bank 3 (power-on): RAM[x] = x ^ $A5 through $1000,X ; verify through $1080,X ; $80 = $11 ; LDA $1FF6 -> bank 0
+  //   bank 0: $81 = $1080 (RAM[0]) ; $82 = $1000 (a read of the write port gives the ROM byte, $77) ; $83 = $10FF ; JMP *
+  task pk; input integer o; input [7:0] val; begin slot.mem[o] = val; end endtask
+  task run_sc;
+    integer b3, b, bad;
+    begin
+      b3 = 3 * 4096;
+      for (k = 0; k < 16384; k = k + 1) slot.mem[k] = 8'hEE;
+      pk(b3+12'h100, 8'hA2); pk(b3+12'h101, 8'h7F);  pk(b3+12'h102, 8'h8A);  pk(b3+12'h103, 8'h49); pk(b3+12'h104, 8'hA5);
+      pk(b3+12'h105, 8'h9D); pk(b3+12'h106, 8'h00);  pk(b3+12'h107, 8'h10);  pk(b3+12'h108, 8'hCA);
+      pk(b3+12'h109, 8'h10); pk(b3+12'h10A, 8'hF7);  pk(b3+12'h10B, 8'hA2);  pk(b3+12'h10C, 8'h7F);
+      pk(b3+12'h10D, 8'h8A); pk(b3+12'h10E, 8'h49);  pk(b3+12'h10F, 8'hA5);  pk(b3+12'h110, 8'hDD);
+      pk(b3+12'h111, 8'h80); pk(b3+12'h112, 8'h10);  pk(b3+12'h113, 8'hD0);  pk(b3+12'h114, 8'h1B);
+      pk(b3+12'h115, 8'hCA); pk(b3+12'h116, 8'h10);  pk(b3+12'h117, 8'hF5);  pk(b3+12'h118, 8'hA9);
+      pk(b3+12'h119, 8'h11); pk(b3+12'h11A, 8'h85);  pk(b3+12'h11B, 8'h80);
+      pk(b3+12'h11C, 8'hAD); pk(b3+12'h11D, 8'hF6);  pk(b3+12'h11E, 8'h1F);                     // LDA $1FF6 -> bank 0
+      pk(b3+12'h130, 8'hA9); pk(b3+12'h131, 8'hEE);  pk(b3+12'h132, 8'h85);  pk(b3+12'h133, 8'h80);
+      pk(b3+12'h134, 8'h4C); pk(b3+12'h135, 8'h34);  pk(b3+12'h136, 8'hF1);                     // bad: $80 = $EE
+      pk(0, 8'h77);
+      pk(12'h11F, 8'hAD); pk(12'h120, 8'h00); pk(12'h121, 8'h10); pk(12'h122, 8'h85); pk(12'h123, 8'h82);
+      pk(12'h124, 8'hAD); pk(12'h125, 8'h80); pk(12'h126, 8'h10); pk(12'h127, 8'h85); pk(12'h128, 8'h81);
+      pk(12'h129, 8'hAD); pk(12'h12A, 8'hFF); pk(12'h12B, 8'h10); pk(12'h12C, 8'h85); pk(12'h12D, 8'h83);
+      pk(12'h12E, 8'h4C); pk(12'h12F, 8'h2E); pk(12'h130, 8'hF1);
+      for (b = 0; b < 4; b = b + 1) begin slot.mem[b*4096+4092] = 8'h00; slot.mem[b*4096+4093] = 8'hF1; end
+      reset = 1; repeat (3) @(negedge clk); reset = 0; repeat (3) @(negedge clk);
+      for (b = 0; b < 4; b = b + 1) top.core.u_riot.ram[b] = 8'h00;
+      sreg_wr(4'd3, {2'b10, 3'd3, 1'b1});                  // run, F6, Superchip
+      sreg_rd(4'd3, v); expect8("control readback with SC", v, 8'h27);
+      wait_loaded;
+      #6000000;                                           // fill + verify twice ~ 3.5 ms of console time
+      expect8("F6SC: fill+verify flag", top.core.u_riot.ram[0], 8'h11);
+      expect8("F6SC: RAM[0] via $1080", top.core.u_riot.ram[1], 8'hA5);
+      expect8("F6SC: $1000 read = ROM", top.core.u_riot.ram[2], 8'h77);
+      expect8("F6SC: RAM[127] via $10FF", top.core.u_riot.ram[3], 8'hDA);
+      expect8("F6SC: RAM[5] direct",  top.core.sc_ram[5], 8'hA0);
+      sreg_rd(4'd8, v); expect8("F6SC: miss counter", v, 8'h00);
+      // the same image with the SC bit off: the window is plain ROM, so the program must NOT find its bytes
+      reset = 1; repeat (3) @(negedge clk); reset = 0; repeat (3) @(negedge clk);
+      for (b = 0; b < 4; b = b + 1) top.core.u_riot.ram[b] = 8'h00;
+      sreg_wr(4'd3, {2'b00, 3'd3, 1'b1});
+      wait_loaded;
+      #6000000;
+      if (top.core.u_riot.ram[0] === 8'h11) begin errs = errs + 1; $display("FAIL  F6 without SC passed the Superchip test"); end
+      else $display("ok    F6 without SC: the Superchip test fails, as it must");
+    end
+  endtask
+
   initial begin
     repeat (6) @(negedge clk);
     reset = 0;
     repeat (4) @(negedge clk);
 
     sreg_rd(4'd4, v); expect8("signature 'A'", v, 8'h41);
-    sreg_rd(4'd7, v); expect8("version",       v, 8'h0D);
+    sreg_rd(4'd7, v); expect8("version",       v, 8'h0E);
     sreg_rd(4'd13, v); expect8("dropped frames at start", v, 8'h00);
     if (loop_enable !== 1'b0 || busy !== 2'b00) begin errs = errs + 1; $display("FAIL  loop_enable/busy not idle"); end
     sreg_wr(4'd0, 8'hD7);
@@ -396,6 +444,7 @@ module tb_a26_top;
     run_banked(3'd2, 2, 8'hF8, 8'hC0);                   // F8: hotspots $1FF8/$1FF9
     run_banked(3'd3, 4, 8'hF6, 8'hD0);                   // F6: hotspots $1FF6..$1FF9
     run_fe;                                              // FE: bank from the byte after $01FE
+    run_sc;                                              // F6 + Superchip RAM (register 3 bit 5)
     expect8("CPU cycles before loaded", {7'b0, early}, 8'h00);
 
     if (errs == 0) $display("PASS  a26_top");

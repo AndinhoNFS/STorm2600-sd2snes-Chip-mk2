@@ -4,13 +4,13 @@ Esta pasta tem só os 3 arquivos que o modo Atari acrescenta ou substitui na pas
 `/sd2snes/` do cartão do sd2snes (Mk.II). O resto da pasta (menu, demais cores
 do FPGA) vem da release do sd2snes (passo 1 da Instalação).
 
-Estado: **Passo 35**, aprovado no console em 22/10/2026: bitstream do Passo 34 (versão `$0D`, captura de 232 linhas), player v17 e o firmware do Passo 35, feito sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes.
+Estado: **Passo 36**, aprovado no console em 23/10/2026: bitstream do Passo 36 (versão `$0E`, Superchip F8SC e F6SC), player v17 (o mesmo do Passo 35) e o firmware do Passo 36, feito sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes.
 
 | Arquivo | Tamanho | md5 | O que é |
 |---|---|---|---|
-| `sd2snes/fpga_atari.bit` | 129597 | `a6769dd1c0da788fbd5450242752753f` | bitstream do core do Atari (Passo 34: captura vertical de 232 linhas, TIA do Passo 33 com a regra de placar com prioridade, versão `$0D`) |
+| `sd2snes/fpga_atari.bit` | 129888 | `d33d69b587c485e9435126053061b8a9` | bitstream do core do Atari (Passo 36: Superchip F8SC e F6SC, versão `$0E`; mantém a captura de 232 linhas do Passo 34 e o TIA do Passo 33) |
 | `sd2snes/atari_snes.bin` | 32768 | `4074bd4c8861c1dd586a8799d16e412f` | player SNES v17 (232 linhas; X paleta, Y nível, R pausa com PAUSE na tela), já com o nome que o firmware abre |
-| `sd2snes/firmware.img` | 112327 | `ae29494ac8d370b263aef5a1042c5b79` | firmware do Mk.II com o modo Atari e a detecção do FE, feito sobre a tag `v1.11.2-br-v2.17` (Passo 35); casa com o `menu.bin` da própria v2.17 |
+| `sd2snes/firmware.img` | 112435 | `789fb4f590d76aebfc09a745adb1bfd1` | firmware do Mk.II com o modo Atari, a detecção do FE e a do Superchip, feito sobre a tag `v1.11.2-br-v2.17` (Passo 36); casa com o `menu.bin` da própria v2.17 |
 
 Os mesmos md5 estão em `MD5SUMS`.
 
@@ -56,7 +56,7 @@ Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
 4. Na primeira vez que abrir um `.a26`, o menu pede a confirmação de "core
    experimental"; marque "não avisar de novo" se não quiser vê-la outra vez.
 
-**Testado** no console com o firmware do Passo 35 junto com o pacote oficial
+**Testado** no console com o firmware do Passo 36 junto com o pacote oficial
 v1.11.2-br-v2.17 inteiro (o firmware do Passo 25 com o menu da 2.16.4 mostrava
 as pastas como "?10", "?G": o menu era anterior ao firmware).
 
@@ -64,8 +64,10 @@ as pastas como "?10", "?G": o menu era anterior ao firmware).
 
 O bitstream e o player são lidos do cartão a cada jogo, sem gravação em flash:
 basta trocar os arquivos. **Troque os dois juntos**: o player v17 só funciona
-com o bitstream do Passo 34 (232 linhas), e o v14 só com o do Passo 33 ou
-anterior. O conjunto do Passo 33 + player v14 (Release `v0.9-p33`) é
+com o bitstream do Passo 34 ou posterior (232 linhas, Passo 36 incluído), e o v14
+só com o do Passo 33 ou anterior. O conjunto do Passo 35 (Release `v0.10-p35`) é
+`a6769dd1c0da788fbd5450242752753f` (bitstream, Passo 34) com o player v17 e o
+firmware `ae29494ac8d370b263aef5a1042c5b79`. O conjunto do Passo 33 + player v14 (Release `v0.9-p33`) é
 `87887c111a788c51805a644313b16808` (bitstream) com
 `9cbeeda15bec0d7cacd8fea0c9e4b48c` (player). O conjunto do Passo 31 + player v13 (Release
 `v0.8-p31`) é `5bbcf7b2be8815e326de021119af63bf` (bitstream) com
@@ -103,8 +105,12 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 
 ## Avisos
 
-- Passo 35 (bitstream do Passo 34 + player v17 + firmware sobre a 2.17)
-  aprovado pelo autor no console em 22/10/2026. Diferenças conhecidas: Ghoul
+- Passo 36 (bitstream do Passo 36 + player v17 + firmware sobre a 2.17)
+  aprovado pelo autor no console em 23/10/2026: as duas ROMs de teste do
+  Superchip (verdes), Dig Dug, Crystal Castles, Klax, Secret Quest, Desert
+  Falcon, Jr. Pac-Man, Millipede e Stargate; River Raid, Pitfall, Bobby Is
+  Going Home e Decathlon iguais ao Passo 35. Passo 35 (bitstream do Passo 34 +
+  player v17 + firmware sobre a 2.17) aprovado em 22/10/2026. Diferenças conhecidas: Ghoul
   (+1 pixel) e Chess; a troca de quadro (trava dos 3 buffers) segue em
   observação. Conjuntos anteriores aprovados: Passo 33 + player v14
   (21/10/2026) e Passo 31 + player v13: Checkers, H.E.R.O., Seaquest, River
@@ -117,5 +123,6 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 - O `.a26` pede a confirmação de "core experimental" da 2.17 na primeira vez.
 - A detecção do FE segue o Stella (ver `firmware/LEIAME.md`). Os outros
   arquivos de 8 KB continuam como F8.
-- ROMs com RAM Superchip não são recusadas, mas o core não a implementa.
+- O Superchip é implementado em F8SC e F6SC. O F4SC (32 KB) roda como F4 comum:
+  a ROM do core é de 16 KB. Folga de timing do bitstream: +0,001 ns a 96 MHz.
 - Limitações conhecidas e resultado na coleção: ver o `README.md` da raiz.

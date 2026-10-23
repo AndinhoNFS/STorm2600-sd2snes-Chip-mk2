@@ -31,6 +31,11 @@
 // MAPPERS (mapper input)
 //   0 = 2K (mirrored)   1 = 4K   2 = F8 (8K)   3 = F6 (16K)   4 = F4 (32K)
 //   Hotspots switch the bank on the access itself.  Power-on bank = last bank.
+//   Superchip (sc_en = 1, with F8 / F6 / F4): 128 bytes of RAM at the start of every 4K bank.  Write
+//   $1000-$107F, read $1080-$10FF (A11..A8 = 0, A7 selects the port); the ROM bytes of that range are
+//   never seen.  The RAM is distributed RAM (LUTs): the 16 block RAMs of the shell are all in use.  A
+//   read of the write port gives the ROM byte and writes nothing (the console would write the bus
+//   value; no program relies on it).  The Mk.II core ROM is 16K, so the firmware sets sc_en for F8 and F6 only.
 //   5 = FE (Activision, 8K; step 24): no hotspot in the cartridge window.  The cycle after
 //   any access to $01FE (the stack byte of a JSR / RTS made with SP = $FF) carries the high
 //   byte of the target / return address on the data bus: D5 = 1 ($Fxxx) selects the first
@@ -55,6 +60,7 @@ module a26_core #(
   input             clk,
   input             rst,
   input      [2:0]  mapper,
+  input             sc_en,        // Superchip RAM (see MAPPERS)
 
   input      [7:0]  swcha_in,
   input      [7:0]  swchb_in,
@@ -256,12 +262,25 @@ module a26_core #(
   end
   assign rom_miss_ev = cpu_ce & rom_cs & ~cpu_we & ~rom_valid;
 
+  // ---- Superchip RAM ---------------------------------------------------------
+  // Same shape as the RIOT RAM: registered read, so the output is stable long before the next cpu_ce.
+  // (ucf.extra: the RAM and everything it feeds stay in the slow group.)
+  wire sc_win = rom_cs & sc_en & (cpu_ab[11:8] == 4'b0000);
+  wire sc_wr  = cpu_ce & cpu_we & sc_win & ~cpu_ab[7];
+  wire sc_rd  = sc_win & cpu_ab[7] & ~cpu_we;
+  (* ram_style = "distributed" *) reg [7:0] sc_ram [0:127];
+  reg [7:0] sc_q;
+  always @(posedge clk) begin
+    if (sc_wr) sc_ram[cpu_ab[6:0]] <= cpu_dout;
+    sc_q <= sc_ram[cpu_ab[6:0]];
+  end
+
   // ---- CPU read mux --------------------------------------------------------
   // Passo 29: the TIA drives only D7/D6 on a read; D5..D0 keep the last byte the bus carried (the operand
   // or address byte of the previous cycle, or the byte of a dummy read), as on the console.  Some programs
   // depend on it (e.g. AND $0F written for AND #$0F).
   reg [7:0] last_bus = 8'h00;
   always @(posedge clk) if (cpu_ce) last_bus <= cpu_we ? cpu_dout : cpu_din;
-  assign cpu_din = rom_cs ? rom_q : (riot_cs ? riot_dout : {tia_dout[7:6], last_bus[5:0]});
+  assign cpu_din = rom_cs ? (sc_rd ? sc_q : rom_q) : (riot_cs ? riot_dout : {tia_dout[7:6], last_bus[5:0]});
 
 endmodule

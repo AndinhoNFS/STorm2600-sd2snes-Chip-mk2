@@ -54,7 +54,7 @@ module a26_top #(
 
   // ---- SNES-visible registers ---------------------------------------------
   wire [7:0] swcha, swchb;
-  wire       fire0, fire1, run, pause;
+  wire       fire0, fire1, run, pause, sc;
   wire [6:0] yofs;
   wire [1:0] pal;
   wire       lock_v;
@@ -75,7 +75,7 @@ module a26_top #(
     .reg_data_out(reg_data_out),
     .reg_oe_falling(reg_oe_falling), .reg_we_rising(reg_we_rising),
     .swcha(swcha), .swchb(swchb), .fire0(fire0), .fire1(fire1),
-    .inpt(inpt), .run(run), .mapper(mapper), .pause(pause),
+    .inpt(inpt), .run(run), .mapper(mapper), .pause(pause), .sc(sc),
     .yofs(yofs), .pal(pal), .lock_v(lock_v), .lock_i(lock_i),
     .fb_newest(fb_newest), .fb_frames(fb_frames), .fb_nlines(fb_nlines),
     .fb_dropped(fb_dropped), .tile_n(tile_n),
@@ -96,7 +96,7 @@ module a26_top #(
   wire        core_rst = reset | ~run | ~loaded;
 
   a26_core core (
-    .clk(clkin), .rst(core_rst), .mapper(mapper),
+    .clk(clkin), .rst(core_rst), .mapper(mapper), .sc_en(sc),
     .swcha_in(swcha), .swchb_in(swchb), .fire0(fire0), .fire1(fire1), .inpt(inpt),
     .pause(pause),
     .rom_addr(crom_addr), .rom_rd(rom_rd), .rom_data(rom_data), .rom_ack(rom_ack),

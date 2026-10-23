@@ -66,6 +66,15 @@ banco (1 = primeiros 4 KB, 0 = segundos). Desde o Passo 25 o firmware passa 5
 para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 `firmware/LEIAME.md`).
 
+Superchip (Passo 36, versão `$0E`): bit 5 do `$2023`. Com ele ligado, em F8 e F6
+os 128 bytes de RAM ocupam o começo de cada banco de 4 KB: escrita em
+`$1000-$107F`, leitura em `$1080-$10FF`, a ROM dessa faixa nunca é vista. A RAM
+é distribuída (LUTs), dentro do grupo lento de 125 ns (`ucf.extra`), porque as
+16 BRAMs estão todas em uso. Uma leitura da porta de escrita devolve o byte da
+ROM e não grava. O firmware passa o bit no byte do mapper (`$7FF0`, bit 4); o
+player v17 o desloca para o bit 5 do `$2023` e o preserva na pausa. F4SC não
+é atendido: a ROM do core tem 16 KB, então esses `.a26` seguem como F4.
+
 ## Player SNES
 
 - IRQ V=233 (fase 0): force blank; trava o buffer N mais recente
@@ -85,14 +94,14 @@ para os `.a26` de 8 KB que o critério do Stella reconhece como FE (ver
 | 0 | SWCHA |
 | 1 | SWCHB |
 | 2 | fire |
-| 3 | {run, mapper 3:1, pause 4} |
+| 3 | {run, mapper 3:1, pause 4, Superchip 5} |
 | 6 | deslocamento da 1ª linha capturada (o player escreve 0) |
 | 7 | trava |
 | 8 | paleta, bits 1:0 (Passo 28) |
 
 | Leitura | Função |
 |---|---|
-| `$2027` | versão (`$0D` no Passo 34) |
+| `$2027` | versão (`$0D` no Passo 34, `$0E` no Passo 36) |
 | `$202D` | descartes |
 | `$202E/F` | N do último quadro |
 

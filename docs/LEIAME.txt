@@ -260,5 +260,5 @@ Atencao
   do cabecalho do arquivo difere da gravada (ver passo25.txt).
 - O md5 do firmware.img muda a cada compilacao, mesmo com o mesmo fonte; o valor
   acima vale so para este arquivo.
-- Limitacoes conhecidas: ROMs com RAM Superchip nao sao recusadas (o core nao a
-  implementa); o Mk.III nao foi compilado com o patch.
+- Limitacoes conhecidas: o Superchip (F8SC e F6SC) e' implementado desde o Passo 36; o
+  F4SC roda como F4 comum (a ROM do core e' de 16 KB); o Mk.III nao foi compilado com o patch.

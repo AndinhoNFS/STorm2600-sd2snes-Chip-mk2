@@ -15,7 +15,8 @@
 //   2  bit0 = fire0 pin level, bit1 = fire1 pin level  (1 = released)
 //   3  bit0 = run (0 holds the core in reset), bits 3:1 = mapper,
 //      bit4 = pause (1 stops the colour clock: CPU, TIA, RIOT and audio freeze
-//      where they are, nothing is reset, the published frame stays)
+//      where they are, nothing is reset, the published frame stays),
+//      bit5 = Superchip RAM (F8 / F6: $1000-$107F write, $1080-$10FF read; Passo 36)
 //   4  bits 3:0 = INPT0..3 pin levels (paddles; leave 0 for joysticks)
 //   5  any value: clear the diagnostics (rom_miss flag, miss counter, max latency)
 //   6  vertical offset of the picture window, signed 8 bit, -16..+47 (values
@@ -70,6 +71,7 @@ module a26_regs (
   output           run,
   output     [2:0] mapper,
   output           pause,
+  output           sc,
   output     [6:0] yofs,
   output     [1:0] pal,
   output           lock_v,
@@ -91,7 +93,7 @@ module a26_regs (
 
   reg [7:0] r_swcha, r_swchb;
   reg [1:0] r_fire;
-  reg [4:0] r_ctrl;
+  reg [5:0] r_ctrl;
   reg [3:0] r_inpt;
   reg [6:0] r_yofs;
   reg [1:0] r_pal;
@@ -100,7 +102,7 @@ module a26_regs (
 
   initial begin
     r_swcha = 8'hFF; r_swchb = 8'hFF; r_fire = 2'b11;
-    r_ctrl = 5'b00010; r_inpt = 4'h0; r_yofs = 7'd0; r_pal = 2'd0; r_lock = 3'd0; data_out_r = 8'h00; diag_clr = 1'b0;
+    r_ctrl = 6'b000010; r_inpt = 4'h0; r_yofs = 7'd0; r_pal = 2'd0; r_lock = 3'd0; data_out_r = 8'h00; diag_clr = 1'b0;
   end
 
   assign swcha  = r_swcha;
@@ -111,6 +113,7 @@ module a26_regs (
   assign run    = r_ctrl[0];
   assign mapper = r_ctrl[3:1];
   assign pause  = r_ctrl[4];
+  assign sc     = r_ctrl[5];
   assign yofs   = r_yofs;
   assign pal    = r_pal;
   assign lock_v = r_lock[2];
@@ -125,7 +128,7 @@ module a26_regs (
   always @(posedge clk) begin
     if (rst) begin
       r_swcha <= 8'hFF; r_swchb <= 8'hFF; r_fire <= 2'b11;
-      r_ctrl  <= 5'b00010;                      // mapper 1 (4K), not running, not paused
+      r_ctrl  <= 6'b000010;                     // mapper 1 (4K), not running, not paused, no Superchip
       r_inpt  <= 4'h0;
       r_yofs  <= 7'd0;
       r_pal   <= 2'd0;
@@ -135,7 +138,7 @@ module a26_regs (
         4'd0: r_swcha <= reg_data_in;
         4'd1: r_swchb <= reg_data_in;
         4'd2: r_fire  <= reg_data_in[1:0];
-        4'd3: r_ctrl  <= reg_data_in[4:0];
+        4'd3: r_ctrl  <= reg_data_in[5:0];
         4'd4: r_inpt  <= reg_data_in[3:0];
         4'd6: r_yofs  <= yofs_d;
         4'd8: r_pal   <= reg_data_in[1:0];
@@ -154,11 +157,11 @@ module a26_regs (
         4'd0: data_out_r <= {6'b000000, fb_newest};
         4'd1: data_out_r <= fb_frames;
         4'd2: data_out_r <= fb_nlines;
-        4'd3: data_out_r <= {3'b000, r_ctrl};
+        4'd3: data_out_r <= {2'b00, r_ctrl};
         4'd4: data_out_r <= 8'h41;             // 'A'
         4'd5: data_out_r <= 8'h32;             // '2'
         4'd6: data_out_r <= 8'h36;             // '6'
-        4'd7: data_out_r <= 8'h0D;             // version
+        4'd7: data_out_r <= 8'h0E;             // version
         4'd8: data_out_r <= miss_cnt;
         4'd9: data_out_r <= lat_max;
         4'd10: data_out_r <= {r_yofs[6], r_yofs};

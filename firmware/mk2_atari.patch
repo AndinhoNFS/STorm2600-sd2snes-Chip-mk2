@@ -21,11 +21,12 @@
  extern cfg_t CFG;   /* a26_video_width -> feat16[5] (picture width) in a26_id */
  
  /* Both buffers live in the shared scratch (scratch.h, AHB SRAM) -- NOT plain .bss
-@@ -117,8 +116,49 @@
+@@ -117,11 +116,56 @@
    uint8_t  sc_dist;       /* how many DISTINCT operands, i.e. popcount(sc_seen) */
    uint8_t  sc_lead_const; /* every 4K bank still has a constant 256-byte lead-in */
    uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
 +#ifdef CONFIG_MK2
++  uint8_t  sc_mir_ok;     /* Stella's rule: the first 128 bytes of every 4K bank repeat in the next 128 */
 +  uint8_t  fe_hist[4];    /* the 4 bytes before the current one (FE/F8 windows) */
 +  uint8_t  fe_seen;       /* how many of fe_hist are valid, saturates at 4 */
 +  uint8_t  fe_sigs;       /* bit N = FE signature N of a26_fe_sig found */
@@ -71,21 +72,45 @@
  static void a26_scan_reset(a26_scan_t *st) {
    memset(st, 0, sizeof(a26_scan_t));
    st->sc_lead_const = 1;
-@@ -166,6 +206,9 @@
++#ifdef CONFIG_MK2
++  st->sc_mir_ok = 1;
++#endif
+ }
+ 
+ /* Which 1K slice groups of the E0 window ($1FE0-$1FE7, $1FE8-$1FEF, $1FF0-$1FF7)
+@@ -166,6 +210,18 @@
      if(off == 0) st->sc_lead_fill = buf[i];
      else if(buf[i] != st->sc_lead_fill) st->sc_lead_const = 0;
    }
++#ifdef CONFIG_MK2
++  /* Stella's rule needs no buffer of its own: the blocks are 512 bytes and start on
++     multiples of 512 (the carry bytes only precede the first new byte), so the 256-byte
++     lead-in of a bank is always inside ONE block, at buf[carry]. A block too short to hold
++     it (a truncated file) can only lose evidence. */
++  if(((base + carry) & 0xFFF) == 0) {
++    if(len - carry < 256 || memcmp(buf + carry, buf + carry + 128, 128)) st->sc_mir_ok = 0;
++  }
++#endif
 +#ifdef CONFIG_MK2
 +  for(i = carry; i < len; i++) a26_fe_byte(st, buf[i]);
 +#endif
  
    if(len < 2) return;
    if(last) {
-@@ -270,6 +313,13 @@
+@@ -270,6 +326,22 @@
    return (uint8_t)(st->sc_lead_const && st->sc_dist >= 2);
  }
  
 +#ifdef CONFIG_MK2
++/* Superchip, Stella's rule (CartDetector::isProbablySC): the first 128 bytes of every
++   4K bank repeat in the next 128 (the RAM is mirrored there on the cartridge). It also
++   catches images whose lead-in is not one constant filler (Crystal Castles, Dig Dug, ...)
++   or that never read the RAM through two distinct addresses. Used for 8K (F8SC) and 16K
++   (F6SC) only, in addition to a26_superchip(). */
++static uint8_t a26_superchip_stella(const a26_scan_t *st) {
++  return st->sc_mir_ok;
++}
++
 +/* FE: a signature, and no "potential F8" (Stella asks for 2 hits of one store). */
 +static uint8_t a26_probably_fe(const a26_scan_t *st) {
 +  return (uint8_t)(st->fe_sigs && st->f8_sta[0] < 2 && st->f8_sta[1] < 2);
@@ -95,9 +120,13 @@
  static void a26_noimpl(a26_romprops_t *props, const char *param) {
    props->error = MENU_ERR_NOIMPL;
    props->error_param = (const uint8_t*)param;
-@@ -309,6 +359,11 @@
+@@ -308,13 +380,24 @@
+       if(a26_strong_ua(st))      { a26_noimpl(props, "UA"); return; }
        props->scheme = A26_BS_F8;
        props->size_class = 2;
++#ifdef CONFIG_MK2
++      sc |= a26_superchip_stella(st);
++#endif
        props->superchip = sc;
 +#ifdef CONFIG_MK2
 +      /* after the refusals above and only without Superchip evidence: Stella tests
@@ -107,7 +136,16 @@
        break;
  
      case 16384:
-@@ -418,6 +473,15 @@
+       if(a26_strong_3f(st)) { a26_noimpl(props, "3F"); return; }
+       props->scheme = A26_BS_F6;
+       props->size_class = 3;
++#ifdef CONFIG_MK2
++      sc |= a26_superchip_stella(st);
++#endif
+       props->superchip = sc;
+       break;
+ 
+@@ -418,6 +501,15 @@
    /* 3F=<score>/<positions>/<absolute stores>, SC=<flag>/<distinct read refs>,
       E0=<slice mask>: the last two of each are what the decision looks at, the
       rest is there to explain a verdict from a log alone. */
@@ -123,7 +161,7 @@
    printf("A26: %ld B scheme=%d SC=%d/%d 3F=%d/%d/%d UA=%d/%d E0=%x feat16=%04x %s%s\n",
           (long)romsize, props->scheme, props->superchip, props->sc_read_refs,
           props->score_3f, props->addr_distinct_3f, props->abs_stores_3f,
-@@ -425,6 +489,7 @@
+@@ -425,6 +517,7 @@
           props->e0_slices_hit, props->feat16,
           props->error ? "NOIMPL:" : "ok",
           props->error ? (const char*)props->error_param : "");
@@ -131,7 +169,7 @@
  }
  
  /* boot the SNES-side player instead of the .a26; the .a26 is staged separately */
-@@ -448,23 +513,3 @@
+@@ -448,23 +541,3 @@
    printf("A26: staging %s -> PSRAM %06lx\n", a26_rompath, (long)A26_ROM_PSRAM);
    load_sram_offload((uint8_t*)a26_rompath, A26_ROM_PSRAM, 0);
  }
@@ -225,7 +263,7 @@
                      : sgb_romprops.has_sgb ? sgb_romprops.fpga_sgbfeat
                                             : romprops.fpga_dspfeat);
    nes_dbg_log("POST_CHIPFEAT");        /* nesdbg: no-op fora de um load .nes */
-@@ -926,6 +931,15 @@
+@@ -926,6 +931,19 @@
    /* Atari 2600: stage the .a26 image into PSRAM before the SNES boots (the core copies
       it into BRAM at reset and never reads PSRAM again).  No-op without a .a26. */
    a26_load_rom();
@@ -234,14 +272,18 @@
 +     just put in PSRAM (see A26_PLAYER_MAPPER_OFS in atari.h) */
 +  if (a26_romprops.has_a26) {
 +    uint32_t player = c->base_addr + romprops.load_address;
-+    sram_writebyte(a26_romprops.scheme, player + A26_PLAYER_MAPPER_OFS);
++    /* bit 4 = Superchip RAM (the player shifts it to bit 5 of core register 3); only F8 and F6:
++       the core ROM is 16 KB, so an F4SC stays a plain F4 */
++    uint8_t scheme = a26_romprops.scheme;
++    if(a26_romprops.superchip && (scheme == A26_BS_F8 || scheme == A26_BS_F6)) scheme |= 0x10;
++    sram_writebyte(scheme, player + A26_PLAYER_MAPPER_OFS);
 +    sram_writebyte(A26_PLAYER_MAGIC,    player + A26_PLAYER_MAGIC_OFS);
 +  }
 +#endif
  
    /* SGB update local file properties */
    if (sgb_romprops.has_sgb) {
-@@ -974,14 +988,19 @@
+@@ -974,14 +992,19 @@
      c->filename = c->a26_filename;
  
      /* no SaveRAM: no scheme in the v0 set is battery backed (the Superchip RAM lives
@@ -265,7 +307,7 @@
    }
  
    /* SGB load GB RTC */
-@@ -1177,7 +1196,8 @@
+@@ -1177,7 +1200,8 @@
    uint8_t   flags       = c->flags;
    uint32_t  file_offset = c->file_offset;
  #ifdef CONFIG_MK2
@@ -275,7 +317,7 @@
       the browser on mk2 so the user gets a clear "needs mk3" popup here instead
       of .nes silently missing from the listing, or a .sms dying later with a
       misleading missing-file popup for fpga_sms.bit / booting the header as a
-@@ -1185,8 +1205,7 @@
+@@ -1185,8 +1209,7 @@
    {
      char *mk2_ext = strrchr((char*)filename, '.');
      if (mk2_ext && (!strcasecmp(mk2_ext + 1, "nes")
@@ -285,7 +327,7 @@
        file_close();
        sms_active = 0;  /* returning before sms_id() would leave a stale flag */
        a26_romprops.has_a26 = 0;   /* same: returning before a26_id() leaves it stale */
-@@ -1301,7 +1320,17 @@
+@@ -1301,7 +1324,17 @@
       anything the LoROM header of the player could fake has to be dropped here, or the
       prerequisite check below would demand a chip BIOS for a cartridge that has none. */
    if (a26_romprops.has_a26) {
