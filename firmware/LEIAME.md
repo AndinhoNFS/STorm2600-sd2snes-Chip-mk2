@@ -27,6 +27,12 @@ Nenhum outro arquivo do firmware foi alterado.
   do core.
 - `fpga.h`: nome do bitstream, `/sd2snes/fpga_atari.bit`.
 - `atari.c` / `atari.h` (Passo 25): detecção do mapper FE, descrita abaixo.
+- `atari.c` / `memory.c` (Passo 36): Superchip. No Mk.II o `.a26` de 8 KB ou 16 KB
+  vale como Superchip pela regra de antes **ou** pela do Stella (os primeiros 128
+  bytes de cada banco de 4 KB se repetem nos 128 seguintes); a regra do Stella
+  não usa buffer, só compara dentro do bloco de 512 bytes da leitura. O
+  `memory.c` grava o bit 4 do byte do mapper (`$7FF0`) quando há Superchip em F8
+  ou F6; o F4 com Superchip continua F4 (a ROM do core tem 16 KB).
 - `memory.c`: para um `.a26` a máscara de ROM passa a 4 MB, para o SNES
   enxergar os buffers de quadro do core em `$70:8000`; o Mk.II não usa o
   CHIPFEAT para o Atari.

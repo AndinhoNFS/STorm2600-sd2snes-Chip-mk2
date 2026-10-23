@@ -117,6 +117,7 @@ typedef struct {
   uint8_t  sc_lead_const; /* every 4K bank still has a constant 256-byte lead-in */
   uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
 #ifdef CONFIG_MK2
+  uint8_t  sc_mir_ok;     /* Stella's rule: the first 128 bytes of every 4K bank repeat in the next 128 */
   uint8_t  fe_hist[4];    /* the 4 bytes before the current one (FE/F8 windows) */
   uint8_t  fe_seen;       /* how many of fe_hist are valid, saturates at 4 */
   uint8_t  fe_sigs;       /* bit N = FE signature N of a26_fe_sig found */
@@ -162,6 +163,9 @@ static void a26_fe_byte(a26_scan_t *st, uint8_t b) {
 static void a26_scan_reset(a26_scan_t *st) {
   memset(st, 0, sizeof(a26_scan_t));
   st->sc_lead_const = 1;
+#ifdef CONFIG_MK2
+  st->sc_mir_ok = 1;
+#endif
 }
 
 /* Which 1K slice groups of the E0 window ($1FE0-$1FE7, $1FE8-$1FEF, $1FF0-$1FF7)
@@ -206,6 +210,15 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
     if(off == 0) st->sc_lead_fill = buf[i];
     else if(buf[i] != st->sc_lead_fill) st->sc_lead_const = 0;
   }
+#ifdef CONFIG_MK2
+  /* Stella's rule needs no buffer of its own: the blocks are 512 bytes and start on
+     multiples of 512 (the carry bytes only precede the first new byte), so the 256-byte
+     lead-in of a bank is always inside ONE block, at buf[carry]. A block too short to hold
+     it (a truncated file) can only lose evidence. */
+  if(((base + carry) & 0xFFF) == 0) {
+    if(len - carry < 256 || memcmp(buf + carry, buf + carry + 128, 128)) st->sc_mir_ok = 0;
+  }
+#endif
 #ifdef CONFIG_MK2
   for(i = carry; i < len; i++) a26_fe_byte(st, buf[i]);
 #endif
@@ -314,6 +327,15 @@ static uint8_t a26_superchip(const a26_scan_t *st) {
 }
 
 #ifdef CONFIG_MK2
+/* Superchip, Stella's rule (CartDetector::isProbablySC): the first 128 bytes of every
+   4K bank repeat in the next 128 (the RAM is mirrored there on the cartridge). It also
+   catches images whose lead-in is not one constant filler (Crystal Castles, Dig Dug, ...)
+   or that never read the RAM through two distinct addresses. Used for 8K (F8SC) and 16K
+   (F6SC) only, in addition to a26_superchip(). */
+static uint8_t a26_superchip_stella(const a26_scan_t *st) {
+  return st->sc_mir_ok;
+}
+
 /* FE: a signature, and no "potential F8" (Stella asks for 2 hits of one store). */
 static uint8_t a26_probably_fe(const a26_scan_t *st) {
   return (uint8_t)(st->fe_sigs && st->f8_sta[0] < 2 && st->f8_sta[1] < 2);
@@ -358,6 +380,9 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
       if(a26_strong_ua(st))      { a26_noimpl(props, "UA"); return; }
       props->scheme = A26_BS_F8;
       props->size_class = 2;
+#ifdef CONFIG_MK2
+      sc |= a26_superchip_stella(st);
+#endif
       props->superchip = sc;
 #ifdef CONFIG_MK2
       /* after the refusals above and only without Superchip evidence: Stella tests
@@ -370,6 +395,9 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
       if(a26_strong_3f(st)) { a26_noimpl(props, "3F"); return; }
       props->scheme = A26_BS_F6;
       props->size_class = 3;
+#ifdef CONFIG_MK2
+      sc |= a26_superchip_stella(st);
+#endif
       props->superchip = sc;
       break;
 

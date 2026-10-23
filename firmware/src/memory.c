@@ -936,7 +936,11 @@ static void load_setup_masks(load_ctx_t *c) {
      just put in PSRAM (see A26_PLAYER_MAPPER_OFS in atari.h) */
   if (a26_romprops.has_a26) {
     uint32_t player = c->base_addr + romprops.load_address;
-    sram_writebyte(a26_romprops.scheme, player + A26_PLAYER_MAPPER_OFS);
+    /* bit 4 = Superchip RAM (the player shifts it to bit 5 of core register 3); only F8 and F6:
+       the core ROM is 16 KB, so an F4SC stays a plain F4 */
+    uint8_t scheme = a26_romprops.scheme;
+    if(a26_romprops.superchip && (scheme == A26_BS_F8 || scheme == A26_BS_F6)) scheme |= 0x10;
+    sram_writebyte(scheme, player + A26_PLAYER_MAPPER_OFS);
     sram_writebyte(A26_PLAYER_MAGIC,    player + A26_PLAYER_MAGIC_OFS);
   }
 #endif
