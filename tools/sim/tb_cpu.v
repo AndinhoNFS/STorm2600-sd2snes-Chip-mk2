@@ -8,7 +8,7 @@ module tb_cpu;
   always #5 clk = ~clk;
   reg [7:0] rom [0:32767];
   reg [1023:0] romfile, outp, fn;
-  integer mapper_i, ncc, tfd, cc = 0, field = 0, lines = 0, ccf = 0, rst0, rst1;
+  integer sc_i = 0, mapper_i, ncc, tfd, cc = 0, field = 0, lines = 0, ccf = 0, rst0, rst1;
   wire [14:0] rom_addr;
   wire        rom_rd;
   reg  [7:0]  rom_data;
@@ -21,7 +21,7 @@ module tb_cpu;
   wire [4:0]  aud_mix;
   wire [15:0] cpu_ab;
   a26_core #(.CC_INC(25'd8388608)) core (
-    .clk(clk), .rst(rst), .mapper(mapper_i[2:0]),
+    .clk(clk), .rst(rst), .mapper(mapper_i[2:0]), .sc_en(sc_i[0]),
     .swcha_in(8'hFF), .swchb_in((field >= rst0 && field < rst1) ? 8'h3E : 8'h3F), .fire0(1'b1), .fire1(1'b1), .inpt(4'h0), .pause(1'b0),
     .rom_addr(rom_addr), .rom_rd(rom_rd), .rom_data(rom_data), .rom_ack(rom_ack),
     .pix_stb(pix_stb), .pix_x(pix_x), .pix_vis(pix_vis), .pix_src(pix_src), .pix_col(pix_col),
@@ -47,6 +47,7 @@ module tb_cpu;
     if (!$value$plusargs("rom=%s", romfile)) begin $display("no +rom"); $finish; end
     if (!$value$plusargs("out=%s", outp)) outp = "cpu";
     if (!$value$plusargs("mapper=%d", mapper_i)) mapper_i = 1;
+    if (!$value$plusargs("sc=%d", sc_i)) sc_i = 0;                 // Superchip RAM (F8 / F6)
     if (!$value$plusargs("ncc=%d", ncc)) ncc = 59736 * 60;
     if (!$value$plusargs("rst0=%d", rst0)) rst0 = -1;
     if (!$value$plusargs("rst1=%d", rst1)) rst1 = -1;

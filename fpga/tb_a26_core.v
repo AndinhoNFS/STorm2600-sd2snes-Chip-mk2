@@ -6,6 +6,9 @@
 //   core A (4K mapper): RAM, stack (JSR/RTS in the RIOT RAM), TIA writes,
 //                       WSYNC halting, RIOT timer polling.
 //   core B (F8 mapper): bank switching through the $1FF8 / $1FF9 hotspots.
+//   core C (F8 + Superchip): fills the 128 bytes of RAM through $1000-$107F, reads them back through
+//                       $1080-$10FF, switches bank and sees the same RAM; a read of the write port
+//                       gives the ROM byte; the ROM bytes under the window are never seen.
 //
 // run:  iverilog -g2005 -Wall -o tb_core tb_a26_core.v a26_core.v m6507.v \
 //                riot6532.v tia.v tia_audio.v && vvp tb_core
@@ -52,7 +55,7 @@ module tb_a26_core;
   wire [15:0] a_ab;
 
   a26_core #(.CC_INC(25'd8388608)) coreA (
-    .clk(clk), .rst(rst), .mapper(3'd1),
+    .clk(clk), .rst(rst), .mapper(3'd1), .sc_en(1'b0),
     .swcha_in(8'hFF), .swchb_in(8'hFF), .fire0(1'b1), .fire1(1'b1), .inpt(4'h0), .pause(1'b0),
     .rom_addr(a_addr), .rom_rd(a_rd), .rom_data(a_data), .rom_ack(a_ack),
     .pix_stb(a_stb), .pix_x(a_px), .pix_vis(a_vis), .pix_src(a_src), .pix_col(a_col),
@@ -72,7 +75,7 @@ module tb_a26_core;
   wire [15:0] b_ab;
 
   a26_core #(.CC_INC(25'd8388608)) coreB (
-    .clk(clk), .rst(rst), .mapper(3'd2),
+    .clk(clk), .rst(rst), .mapper(3'd2), .sc_en(1'b0),
     .swcha_in(8'hFF), .swchb_in(8'hFF), .fire0(1'b1), .fire1(1'b1), .inpt(4'h0), .pause(1'b0),
     .rom_addr(b_addr), .rom_rd(b_rd), .rom_data(b_data), .rom_ack(b_ack),
     .pix_stb(b_stb), .pix_x(b_px), .pix_vis(b_vis), .pix_src(b_src), .pix_col(b_col),
@@ -82,14 +85,35 @@ module tb_a26_core;
     .diag_clr(1'b0), .rom_miss_ev());
   rom_model #(.LAT(3)) romB (.clk(clk), .rd(b_rd), .addr(b_addr), .data(b_data), .ack(b_ack));
 
+  // ---------------- core C : F8 + Superchip ------------------------------
+  wire [14:0] c_addr;  wire c_rd, c_ack;  wire [7:0] c_data;
+  wire        c_stb, c_vis, c_rdy, c_miss, c_vs, c_vb, c_sync;
+  wire [7:0]  c_px, c_hc;
+  wire [1:0]  c_src;
+  wire [6:0]  c_col, c_cbk, c_cpf, c_cp0, c_cp1;
+  wire [4:0]  c_aud;
+  wire [15:0] c_ab;
+
+  a26_core #(.CC_INC(25'd8388608)) coreC (
+    .clk(clk), .rst(rst), .mapper(3'd2), .sc_en(1'b1),
+    .swcha_in(8'hFF), .swchb_in(8'hFF), .fire0(1'b1), .fire1(1'b1), .inpt(4'h0), .pause(1'b0),
+    .rom_addr(c_addr), .rom_rd(c_rd), .rom_data(c_data), .rom_ack(c_ack),
+    .pix_stb(c_stb), .pix_x(c_px), .pix_vis(c_vis), .pix_src(c_src), .pix_col(c_col),
+    .hcount(c_hc), .vsync(c_vs), .vblank(c_vb),
+    .colubk(c_cbk), .colupf(c_cpf), .colup0(c_cp0), .colup1(c_cp1),
+    .aud_mix(c_aud), .cpu_rdy(c_rdy), .cpu_ab(c_ab), .cpu_sync(c_sync), .rom_miss(c_miss),
+    .diag_clr(1'b0), .rom_miss_ev());
+  rom_model #(.LAT(3)) romC (.clk(clk), .rd(c_rd), .addr(c_addr), .data(c_data), .ack(c_ack));
+
   // ---------------- program images ---------------------------------------
   integer k;
 
   task pa; input [11:0] off; input [7:0] v; begin romA.mem[off] = v; end endtask
   task pb; input [14:0] off; input [7:0] v; begin romB.mem[off] = v; end endtask
+  task pc; input [14:0] off; input [7:0] v; begin romC.mem[off] = v; end endtask
 
   initial begin
-    for (k = 0; k < 32768; k = k + 1) begin romA.mem[k] = 8'hEA; romB.mem[k] = 8'hEA; end
+    for (k = 0; k < 32768; k = k + 1) begin romA.mem[k] = 8'hEA; romB.mem[k] = 8'hEA; romC.mem[k] = 8'hEA; end
 
     // ---- program A (4K at $F000) ----
     pa(12'h000, 8'h78);                                   // SEI
@@ -126,6 +150,38 @@ module tb_a26_core;
     pb(15'h0007, 8'hAD); pb(15'h0008, 8'hF9); pb(15'h0009, 8'h1F);   //              LDA $1FF9 (-> bank 1)
     pb(15'h1FFC, 8'h00); pb(15'h1FFD, 8'hF0);                        // vectors, bank 1
     pb(15'h0FFC, 8'h00); pb(15'h0FFD, 8'hF0);                        // vectors, bank 0
+    // ---- program C (F8 + Superchip, 2 x 4K): the first 256 bytes of a bank are the RAM, code starts at $F100 ----
+    // bank 1 (power-on): RAM[x] = x ^ $A5 through $1000,X ; verify through $1080,X (CMP) ; flag $80 = $11 ; LDA $1FF8 -> bank 0
+    pc(15'h1100, 8'hA2); pc(15'h1101, 8'h7F);                        // LDX #$7F
+    pc(15'h1102, 8'h8A);                                             // fill: TXA
+    pc(15'h1103, 8'h49); pc(15'h1104, 8'hA5);                        //       EOR #$A5
+    pc(15'h1105, 8'h9D); pc(15'h1106, 8'h00); pc(15'h1107, 8'h10);   //       STA $1000,X
+    pc(15'h1108, 8'hCA);                                             //       DEX
+    pc(15'h1109, 8'h10); pc(15'h110A, 8'hF7);                        //       BPL fill
+    pc(15'h110B, 8'hA2); pc(15'h110C, 8'h7F);                        //       LDX #$7F
+    pc(15'h110D, 8'h8A);                                             // chk:  TXA
+    pc(15'h110E, 8'h49); pc(15'h110F, 8'hA5);                        //       EOR #$A5
+    pc(15'h1110, 8'hDD); pc(15'h1111, 8'h80); pc(15'h1112, 8'h10);   //       CMP $1080,X
+    pc(15'h1113, 8'hD0); pc(15'h1114, 8'h1B);                        //       BNE bad
+    pc(15'h1115, 8'hCA);                                             //       DEX
+    pc(15'h1116, 8'h10); pc(15'h1117, 8'hF5);                        //       BPL chk
+    pc(15'h1118, 8'hA9); pc(15'h1119, 8'h11);                        //       LDA #$11
+    pc(15'h111A, 8'h85); pc(15'h111B, 8'h80);                        //       STA $80
+    pc(15'h111C, 8'hAD); pc(15'h111D, 8'hF8); pc(15'h111E, 8'h1F);   //       LDA $1FF8 (-> bank 0)
+    pc(15'h1130, 8'hA9); pc(15'h1131, 8'hEE);                        // bad:  LDA #$EE
+    pc(15'h1132, 8'h85); pc(15'h1133, 8'h80);                        //       STA $80
+    pc(15'h1134, 8'h4C); pc(15'h1135, 8'h34); pc(15'h1136, 8'hF1);   //       JMP *
+    // bank 0: the same RAM is there; a read of the write port ($1000) gives the ROM byte ($77 at image offset 0)
+    pc(15'h0000, 8'h77);
+    pc(15'h011F, 8'hAD); pc(15'h0120, 8'h00); pc(15'h0121, 8'h10);   //       LDA $1000
+    pc(15'h0122, 8'h85); pc(15'h0123, 8'h82);                        //       STA $82
+    pc(15'h0124, 8'hAD); pc(15'h0125, 8'h80); pc(15'h0126, 8'h10);   //       LDA $1080
+    pc(15'h0127, 8'h85); pc(15'h0128, 8'h81);                        //       STA $81
+    pc(15'h0129, 8'hAD); pc(15'h012A, 8'hFF); pc(15'h012B, 8'h10);   //       LDA $10FF
+    pc(15'h012C, 8'h85); pc(15'h012D, 8'h83);                        //       STA $83
+    pc(15'h012E, 8'h4C); pc(15'h012F, 8'h2E); pc(15'h0130, 8'hF1);   //       JMP *
+    pc(15'h1FFC, 8'h00); pc(15'h1FFD, 8'hF1);
+    pc(15'h0FFC, 8'h00); pc(15'h0FFD, 8'hF1);
   end
 
   // ---------------- video capture (core A) -------------------------------
@@ -174,6 +230,14 @@ module tb_a26_core;
     expect8("B ram[$80] bank0",  coreB.u_riot.ram[0],   8'h22);
     expect8("B ram[$81] bank1",  coreB.u_riot.ram[1],   8'h33);
     expect8("B rom_miss",        {7'b0, b_miss},        8'h00);
+
+    // ---- core C (Superchip) ----
+    expect8("C fill+verify flag", coreC.u_riot.ram[0],  8'h11);
+    expect8("C ram[0] via $1080", coreC.u_riot.ram[1],  8'hA5);
+    expect8("C $1000 read = ROM", coreC.u_riot.ram[2],  8'h77);
+    expect8("C ram[127] $10FF",   coreC.u_riot.ram[3],  8'hDA);
+    expect8("C sc_ram[5] direct", coreC.sc_ram[5],      8'hA0);
+    expect8("C rom_miss",        {7'b0, c_miss},        8'h00);
 
     if (errs == 0) $display("PASS  a26_core");
     else           $display("FAILED  %0d error(s)", errs);
