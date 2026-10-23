@@ -73,6 +73,19 @@ rom/hmclr_mid.a26: hmclr_mid.s tia_test.inc tia4k.cfg
 	@mkdir -p rom; $(CA65) -D WHAT=0 -o rom/hmclr_mid.o $<; $(LD65) -C tia4k.cfg -o $@ rom/hmclr_mid.o
 ROMS += rom/hmove_c3_n0.a26 rom/hmove_c3_n5.a26 rom/hmove_c3_n7.a26 rom/hmclr_mid.a26
 
+# sc_ram.s: Superchip RAM test, F8SC (2 banks, 8 KB) and F6SC (4 banks, 16 KB); one assembly per bank, joined with cat
+rom/sc_ram_f8sc.a26: sc_ram.s tia_test.inc tia_sc.cfg
+	@mkdir -p rom
+	$(CA65) -D BANK=0 -D HS_TO0='$$1FF8' -o rom/sc8b0.o $<; $(LD65) -C tia_sc.cfg -o rom/sc8b0.bin rom/sc8b0.o
+	$(CA65) -D BANK=1 -D HS_TO0='$$1FF8' -o rom/sc8b1.o $<; $(LD65) -C tia_sc.cfg -o rom/sc8b1.bin rom/sc8b1.o
+	cat rom/sc8b0.bin rom/sc8b1.bin > $@
+rom/sc_ram_f6sc.a26: sc_ram.s tia_test.inc tia_sc.cfg
+	@mkdir -p rom
+	$(CA65) -D BANK=0 -D HS_TO0='$$1FF6' -o rom/sc6b0.o $<; $(LD65) -C tia_sc.cfg -o rom/sc6b0.bin rom/sc6b0.o
+	$(CA65) -D BANK=1 -D HS_TO0='$$1FF6' -o rom/sc6b1.o $<; $(LD65) -C tia_sc.cfg -o rom/sc6b1.bin rom/sc6b1.o
+	cat rom/sc6b0.bin rom/sc6b0.bin rom/sc6b0.bin rom/sc6b1.bin > $@
+ROMS += rom/sc_ram_f8sc.a26 rom/sc_ram_f6sc.a26
+
 clean:
 	rm -rf rom
 
