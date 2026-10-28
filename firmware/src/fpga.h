@@ -52,8 +52,8 @@ extern uint8_t fpga_boot_led;
 #define FPGA_OBC1 ((const uint8_t*)"/sd2snes/fpga_obc1." FPGA_CONF_EXT)
 #define FPGA_COL20 ((const uint8_t*)"/sd2snes/fpga_col20." FPGA_CONF_EXT)
 #define FPGA_GSU ((const uint8_t*)"/sd2snes/fpga_gsu." FPGA_CONF_EXT)
-/* mk2-only GSU variant: FX3 mode in, MSU-1 audio DAC out (the full core
-   overmaps the Spartan-3).  Selected by smc.c when has_fx3 on CONFIG_MK2. */
+/* FX3-only GSU variant (pipelined FX3 CPU), both boards; on the Mk.II it also
+   drops the MSU-1 audio DAC.  Selected by smc.c for every Super FX 3 cart. */
 #define FPGA_GSU3 ((const uint8_t*)"/sd2snes/fpga_gsu3." FPGA_CONF_EXT)
 #define FPGA_SA1 ((const uint8_t*)"/sd2snes/fpga_sa1." FPGA_CONF_EXT)
 #define FPGA_SDD1 ((const uint8_t*)"/sd2snes/fpga_sdd1." FPGA_CONF_EXT)
@@ -61,6 +61,15 @@ extern uint8_t fpga_boot_led;
 /* NES core (fpganes adaptado, verilog/sd2snes_nes) -- mk3-only: so existe
    fpga_nes.bi3; nenhum .bit mk2 e' planejado (ver nes.c). */
 #define FPGA_NES ((const uint8_t*)"/sd2snes/fpga_nes." FPGA_CONF_EXT)
+/* The other two NES cores: same sources and renderer, each with the mapper families of
+   the others compiled out (verilog/sd2snes_nes_mmc3, sd2snes_nes_k).  nes_core_for()
+   (nes.c) maps the mapper number to one of the three. */
+#define FPGA_NES_MMC3 ((const uint8_t*)"/sd2snes/fpga_nes_mmc3." FPGA_CONF_EXT)
+#define FPGA_NES_K ((const uint8_t*)"/sd2snes/fpga_nes_k." FPGA_CONF_EXT)
+/* NES core variant for MMC5 (mapper 5) cartridges (verilog/sd2snes_nes_mmc5): the NES core
+   with the MMC5 as its only mapper and the MMC5 video-bridge commands.  mk3-only like the
+   NES core; selected by nes_update_romprops() for mapper 5. */
+#define FPGA_NES_MMC5 ((const uint8_t*)"/sd2snes/fpga_nes_mmc5." FPGA_CONF_EXT)
 #define FPGA_SPC7110 ((const uint8_t*)"/sd2snes/fpga_spc7110." FPGA_CONF_EXT)
 #define FPGA_SMS ((const uint8_t*)"/sd2snes/fpga_sms." FPGA_CONF_EXT)
 /* Atari 2600 core (verilog/sd2snes_a26) -- mk3-only, like NES/SMS: only fpga_a26.bi3
@@ -82,12 +91,20 @@ extern uint8_t fpga_boot_led;
    romprops.fpga_conf, so every "is this the base core" test still sees the base core. */
 #define FPGA_BASEX ((const uint8_t*)"/sd2snes/fpga_basex." FPGA_CONF_EXT)
 #define FPGA_DSP ((const uint8_t*)"/sd2snes/fpga_dsp." FPGA_CONF_EXT)
+/* mk2-only variant of the dsp core (verilog/sd2snes_dspx: the same source with DSP_COMP).
+   The Spartan-3 dsp core leaves the event cart logic (Campus Challenge '92 / PowerFest '94
+   map, select latch and round timer) out so that it meets timing; this one keeps it.
+   Chosen by load_chip_core() -- romprops.fpga_conf stays FPGA_DSP, so every "is this the
+   dsp core" test still sees the dsp core. */
+#define FPGA_DSPX ((const uint8_t*)"/sd2snes/fpga_dspx." FPGA_CONF_EXT)
 /* Dedicated ST011 core (verilog/sd2snes_st0011): the uPD96050's 16384-word
    program is fetched from the Bus 2 SRAM through a block-RAM cache, which has no
    room in fpga_dsp next to the DSP1-4 on-chip program ROM. ST010 stays on
    fpga_dsp. Exists for both mk2 (.bit) and mk3 (.bi3). */
 #define FPGA_ST0011 ((const uint8_t*)"/sd2snes/fpga_st0011." FPGA_CONF_EXT)
 #define FPGA_ST0018 ((const uint8_t*)"/sd2snes/fpga_st0018." FPGA_CONF_EXT)
+/* Xeno Crisis: a soft Cortex-M0 runs the cartridge's RP2040 firmware (src/xc.c) */
+#define FPGA_XC ((const uint8_t*)"/sd2snes/fpga_xc." FPGA_CONF_EXT)
 /* Copy-protected unlicensed LoROM bootlegs (verilog/sd2snes_bootleg): fpga_base
    plus the protection latch/ALU of the Pokemon/KOF2000/Soul Blade/Tekken 2 carts.
    Picked by ROM CRC32 in bootleg.c; the variant travels in chipfeat[2:0]. */

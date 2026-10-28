@@ -39,6 +39,14 @@
 
 a26_romprops_t a26_romprops;
 
+/* mk2: the flash is full, and measured, keeping these two out of line (not inlined into
+   load_rom through LTO) is 73 bytes smaller.  The mk3 build is left exactly as it was. */
+#ifdef CONFIG_MK2
+#define A26_NOINLINE __attribute__((noinline))
+#else
+#define A26_NOINLINE
+#endif
+
 extern cfg_t CFG;   /* a26_video_width -> feat16[5] (picture width) in a26_id */
 
 /* Both buffers live in the shared scratch (scratch.h, AHB SRAM) -- NOT plain .bss
@@ -81,9 +89,11 @@ static const uint8_t a26_op_direct[] = {
   0xAD, 0x8D, 0x8E, 0x8C, 0x2C, 0x4C, 0x20, 0xAE, 0xAC,
   0xCD, 0x0D, 0x2D, 0x4D, 0x6D, 0xED, 0xEC, 0xCC
 };
+#ifndef CONFIG_MK2   /* mk2 flash is full: the E0 slice counter is a log-only diagnostic, left out there */
 static const uint8_t a26_op_indexed[] = {
   0xBD, 0xB9, 0xBC, 0xBE, 0x9D, 0x99
 };
+#endif
 
 static uint8_t a26_in_table(const uint8_t *tbl, uint8_t n, uint8_t op) {
   uint8_t i;
@@ -97,31 +107,45 @@ static uint8_t a26_is_direct(uint8_t op) {
   return a26_in_table(a26_op_direct, sizeof(a26_op_direct), op);
 }
 
+#ifndef CONFIG_MK2
 static uint8_t a26_is_indexed(uint8_t op) {
   return a26_in_table(a26_op_indexed, sizeof(a26_op_indexed), op);
 }
+#endif
 
 /* Accumulator of the one-pass scan. Counters are 16-bit because a 32KB image can
    in principle produce one match per byte; they are clamped to 8 bits only when
    published in a26_romprops (the decision thresholds are single digits). */
 typedef struct {
+#ifndef CONFIG_MK2
   uint16_t score_3f;      /* weighted evidence for the 3F/3E family (diagnostic) */
   uint16_t dist_3f;       /* image positions that scored for 3F (diagnostic) */
+#endif
   uint16_t abs_3f;        /* "8D 3F 00" windows -- the only 3F evidence that decides */
+#ifndef CONFIG_MK2
   uint16_t score_ua;      /* weighted evidence for UA */
+#endif
   uint8_t  ua_ops;        /* bit0 = $0220 seen, bit1 = $0240 seen */
+#ifndef CONFIG_MK2
   uint8_t  e0_slices;     /* bit N = 1K slice group N of the E0 window referenced */
+#endif
+#ifdef CONFIG_MK2
+  uint8_t  sc_first;      /* the first operand that referenced the Superchip RAM read port */
+  uint8_t  sc_dist;       /* how many DISTINCT operands, saturating at 2 (the decision asks for two) */
+#else
   uint16_t sc_hits;       /* references into the Superchip RAM read port */
   uint8_t  sc_seen[16];   /* bitmap of the 128 operands those references name */
   uint8_t  sc_dist;       /* how many DISTINCT operands, i.e. popcount(sc_seen) */
+#endif
   uint8_t  sc_lead_const; /* every 4K bank still has a constant 256-byte lead-in */
+#ifndef CONFIG_MK2
   uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
+#endif
 #ifdef CONFIG_MK2
   uint8_t  sc_mir_ok;     /* Stella's rule: the first 128 bytes of every 4K bank repeat in the next 128 */
-  uint8_t  fe_hist[4];    /* the 4 bytes before the current one (FE/F8 windows) */
-  uint8_t  fe_seen;       /* how many of fe_hist are valid, saturates at 4 */
-  uint8_t  fe_sigs;       /* bit N = FE signature N of a26_fe_sig found */
-  uint8_t  f8_sta[2];     /* "STA $1FF9" / "STA $FFF9" windows, saturating */
+  uint32_t fe_hist;       /* the 4 bytes before the current one (FE/F8 windows), newest in the low byte */
+  uint8_t  fe_sigs;       /* 1 = one of the FE signatures found */
+  uint8_t  f8_sta[2];     /* "STA $1FF9" / "STA $FFF9" windows, saturating at 2 (the rule asks for two) */
 #endif
 } a26_scan_t;
 
@@ -130,33 +154,44 @@ typedef struct {
    (isProbablyFE, and "isProbablyFE(image) && !f8" in the 8K branch of
    autodetectType): any one of these 5-byte sequences anywhere in an 8K image, and
    neither "STA $1FF9" nor "STA $FFF9" found twice. */
-static const uint8_t a26_fe_sig[5][5] = {
-  { 0x20, 0x00, 0xD0, 0xC6, 0xC5 },  /* JSR $D000; DEC $C5  Decathlon */
-  { 0x20, 0xC3, 0xF8, 0xA5, 0x82 },  /* JSR $F8C3; LDA $82  Robot Tank */
-  { 0xD0, 0xFB, 0x20, 0x73, 0xFE },  /* BNE $FB; JSR $FE73  Space Shuttle (NTSC/PAL) */
-  { 0xD0, 0xFB, 0x20, 0x68, 0xFE },  /* BNE $FB; JSR $FE68  Space Shuttle (SECAM) */
-  { 0x20, 0x00, 0xF0, 0x84, 0xD6 }   /* JSR $F000; STY $D6  Thwocker */
+static const uint32_t a26_fe_sig4[5] = {   /* the first four bytes of each signature, oldest in the top byte */
+  0x2000D0C6,  /* JSR $D000; DEC $C5  Decathlon */
+  0x20C3F8A5,  /* JSR $F8C3; LDA $82  Robot Tank */
+  0xD0FB2073,  /* BNE $FB; JSR $FE73  Space Shuttle (NTSC/PAL) */
+  0xD0FB2068,  /* BNE $FB; JSR $FE68  Space Shuttle (SECAM) */
+  0x2000F084   /* JSR $F000; STY $D6  Thwocker */
 };
+static const uint8_t a26_fe_sig5[5] = { 0xC5, 0x82, 0xFE, 0xFE, 0xD6 };   /* and the fifth */
 
-/* Byte-wise, over every image byte exactly once (independent of the 3-byte window
-   and its carry in a26_scan_block). */
-static void a26_fe_byte(a26_scan_t *st, uint8_t b) {
+/* Byte-wise, over every image byte exactly once (mk2: the whole scan; nothing is carried
+   between blocks).  fe_hist holds the four bytes before this one,
+   newest in the low byte; it starts at zero, which no signature (first byte $20 or
+   $D0) nor the STA window ($8D $F9) can match, so no "bytes seen" count is needed. */
+A26_NOINLINE static void a26_scan_byte(a26_scan_t *st, uint8_t b) {
   uint8_t s;
-  if(st->fe_seen >= 2 && st->fe_hist[2] == 0x8D && st->fe_hist[3] == 0xF9) {
-    if(b == 0x1F && st->f8_sta[0] < 255) st->f8_sta[0]++;
-    if(b == 0xFF && st->f8_sta[1] < 255) st->f8_sta[1]++;
+  uint32_t h = st->fe_hist;
+  uint8_t b0 = (uint8_t)(h >> 8), b1 = (uint8_t)h;     /* the two bytes before b: the window b0 b1 b */
+  if((h & 0xFFFF) == 0x8DF9) {
+    if(b == 0x1F && st->f8_sta[0] < 2) st->f8_sta[0]++;
+    if(b == 0xFF && st->f8_sta[1] < 2) st->f8_sta[1]++;
   }
-  if(st->fe_seen >= 4) {
-    for(s = 0; s < 5; s++) {
-      if(b == a26_fe_sig[s][4] && !memcmp(st->fe_hist, a26_fe_sig[s], 4))
-        st->fe_sigs |= (uint8_t)(1 << s);
-    }
+  for(s = 0; s < 5; s++) {
+    if(b == a26_fe_sig5[s] && h == a26_fe_sig4[s])
+      st->fe_sigs = 1;
   }
-  st->fe_hist[0] = st->fe_hist[1];
-  st->fe_hist[1] = st->fe_hist[2];
-  st->fe_hist[2] = st->fe_hist[3];
-  st->fe_hist[3] = b;
-  if(st->fe_seen < 4) st->fe_seen++;
+  /* The 3-byte windows of the other build's a26_scan_block, one per byte: the history is zero
+     at the start and no window test can match a zero b0 (not an opcode of the table) or b1
+     (not $3F/$20/$40/>=$80), so the first two bytes need no special case and no carry is
+     needed between blocks.  A truncated window at the end of the image never matched anything
+     here (3F needs all three bytes; the "85 3F" count was a log-only diagnostic). */
+  if(b1 == 0x3F && b0 == 0x8D && b == 0x00 && st->abs_3f < 2) st->abs_3f++;   /* saturates at 2: the rule asks for two */
+  if(b == 0x02 && (b1 == 0x20 || b1 == 0x40) && a26_is_direct(b0)) st->ua_ops |= (b1 == 0x20) ? 0x01 : 0x02;
+  if((b == 0x10 || b == 0xF0) && b1 >= 0x80 && a26_is_direct(b0)) {
+    /* mk2 flash is full: the decision only asks "two or more distinct operands" */
+    if(!st->sc_dist)                               { st->sc_first = b1; st->sc_dist = 1; }
+    else if(st->sc_dist < 2 && b1 != st->sc_first) st->sc_dist = 2;
+  }
+  st->fe_hist = (h << 8) | b;
 }
 #endif /* CONFIG_MK2 */
 
@@ -180,12 +215,14 @@ static void a26_scan_reset(a26_scan_t *st) {
    to the first group, which is the only one it can reach. One instruction never
    lights two groups: walking its whole index range into the NEXT group would let
    a single accidental byte triple light two of them at once. */
+#ifndef CONFIG_MK2
 static void a26_hotspot_hit(a26_scan_t *st, uint8_t lo, uint8_t indexed) {
   if(lo >= 0xE0 && lo <= 0xE7)      st->e0_slices |= 0x01;
   else if(lo >= 0xE8 && lo <= 0xEF) st->e0_slices |= 0x02;
   else if(lo >= 0xF0 && lo <= 0xF7) st->e0_slices |= 0x04;
   else if(indexed && lo >= 0xD8 && lo <= 0xDF) st->e0_slices |= 0x01;
 }
+#endif
 
 /* Scan one block of the image. buf[0..len) is the window to look at, of which
    the first `carry` bytes are the tail of the previous block (already seen by
@@ -196,6 +233,23 @@ static void a26_hotspot_hit(a26_scan_t *st, uint8_t lo, uint8_t indexed) {
    Kept free of any file/PSRAM access on purpose: this and a26_decide() are the
    whole detector, and the host gate (tests/host/run_a26_detect.sh) drives them
    through a26_id() over a stdio-backed FatFs. */
+#ifdef CONFIG_MK2
+/* Scan one block of the image (512 bytes, starting at image offset `base`, a multiple of 512). */
+static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len, uint32_t base) {
+  uint32_t i;
+
+  /* Superchip evidence #1 (every bank's 256-byte lead-in is one constant filler) and Stella's
+     rule (its first 128 bytes repeat in the next 128) need no buffer of their own: the lead-in
+     of a bank is always inside ONE block, at buf[0].  A block too short to hold it (a truncated
+     file) can only lose evidence. */
+  if((base & 0xFFF) == 0) {
+    uint32_t n = len > 256 ? 256 : len;
+    if(n && memcmp(buf, buf + 1, n - 1)) st->sc_lead_const = 0;
+    if(n < 256 || memcmp(buf, buf + 128, 128)) st->sc_mir_ok = 0;
+  }
+  for(i = 0; i < len; i++) a26_scan_byte(st, buf[i]);
+}
+#else
 static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
                            uint32_t carry, uint32_t base, uint8_t last) {
   uint32_t i, end;
@@ -210,18 +264,6 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
     if(off == 0) st->sc_lead_fill = buf[i];
     else if(buf[i] != st->sc_lead_fill) st->sc_lead_const = 0;
   }
-#ifdef CONFIG_MK2
-  /* Stella's rule needs no buffer of its own: the blocks are 512 bytes and start on
-     multiples of 512 (the carry bytes only precede the first new byte), so the 256-byte
-     lead-in of a bank is always inside ONE block, at buf[carry]. A block too short to hold
-     it (a truncated file) can only lose evidence. */
-  if(((base + carry) & 0xFFF) == 0) {
-    if(len - carry < 256 || memcmp(buf + carry, buf + carry + 128, 128)) st->sc_mir_ok = 0;
-  }
-#endif
-#ifdef CONFIG_MK2
-  for(i = carry; i < len; i++) a26_fe_byte(st, buf[i]);
-#endif
 
   if(len < 2) return;
   if(last) {
@@ -250,13 +292,18 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
        rate at which random data trips the refusal. */
     if(b1 == 0x3F) {
       if(full && b0 == 0x8D && b2 == 0x00) {
+#ifndef CONFIG_MK2
         st->score_3f += 2;
         st->dist_3f++;
+#endif
         st->abs_3f++;
-      } else if(b0 == 0x85) {
+      }
+#ifndef CONFIG_MK2
+      else if(b0 == 0x85) {
         st->score_3f += 1;
         st->dist_3f++;
       }
+#endif
     }
 
     if(!full) continue;
@@ -266,7 +313,9 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
        than one hotspot is only credibly identified when the image references
        MORE THAN ONE of them (repeats of a single operand are much weaker). */
     if(b2 == 0x02 && (b1 == 0x20 || b1 == 0x40) && a26_is_direct(b0)) {
+#ifndef CONFIG_MK2
       st->score_ua += 2;
+#endif
       st->ua_ops |= (b1 == 0x20) ? 0x01 : 0x02;
     }
 
@@ -278,6 +327,11 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
        left out for the same reason: a table walk through that address range is
        the normal way to read ROM there. */
     if((b2 == 0x10 || b2 == 0xF0) && b1 >= 0x80 && a26_is_direct(b0)) {
+#ifdef CONFIG_MK2
+      /* mk2 flash is full: the decision only asks "two or more distinct operands" */
+      if(!st->sc_dist)                                  { st->sc_first = b1; st->sc_dist = 1; }
+      else if(st->sc_dist < 2 && b1 != st->sc_first)    st->sc_dist = 2;
+#else
       uint8_t idx = (uint8_t)(b1 - 0x80);
       uint8_t bit = (uint8_t)(1 << (idx & 7));
       if(st->sc_hits < 0xFFFF) st->sc_hits++;
@@ -285,18 +339,22 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
         st->sc_seen[idx >> 3] |= bit;
         st->sc_dist++;
       }
+#endif
     }
 
     /* Generated hotspot signatures. Primary filter: only the cartridge window
        ($1Fxx) and its high mirror ($FFxx) are accepted as the operand high byte.
        The other mirrors practically never appear in real code, so narrowing the
        filter buys nothing but fewer false positives. */
+#ifndef CONFIG_MK2
     if(b2 == 0x1F || b2 == 0xFF) {
       if(a26_is_direct(b0))       a26_hotspot_hit(st, b1, 0);
       else if(a26_is_indexed(b0)) a26_hotspot_hit(st, b1, 1);
     }
+#endif
   }
 }
+#endif /* CONFIG_MK2 */
 
 /* "Strong evidence" predicates. Accidental bytes in data must never outvote the
    default for the image size, so only patterns that are implausible as data
@@ -316,7 +374,11 @@ static uint8_t a26_ua_distinct(const a26_scan_t *st) {
 /* UA: both hotspots referenced. score_ua >= 4 is implied by that (each of the
    two operands scores 2) and is kept only so the threshold reads explicitly. */
 static uint8_t a26_strong_ua(const a26_scan_t *st) {
+#ifdef CONFIG_MK2
+  return (a26_ua_distinct(st) >= 2);          /* score_ua is not kept: each operand scores 2 */
+#else
   return (st->score_ua >= 4) && (a26_ua_distinct(st) >= 2);
+#endif
 }
 
 /* Superchip: the RAM shadows the first 256 bytes of EVERY 4K bank -- that ROM is
@@ -358,7 +420,7 @@ static void a26_noimpl(a26_romprops_t *props, const char *param) {
    turned ordinary F8/F6 titles away. Both schemes fall through to the default for
    their size and run wrong, which is the outcome this policy accepts for a scheme
    no signature can separate from a normal image. */
-static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
+A26_NOINLINE static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
                        uint32_t romsize) {
   uint8_t sc = a26_superchip(st);
 
@@ -417,9 +479,11 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
   }
 }
 
+#ifndef CONFIG_MK2
 static uint8_t a26_clamp8(uint16_t v) {
   return (uint8_t)(v > 255 ? 255 : v);
 }
+#endif
 
 /* case-insensitive ".a26" extension check + one streaming pass over the image */
 void a26_id(a26_romprops_t *props, uint8_t *filename) {
@@ -464,6 +528,9 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
                (long)pos, (long)romsize, file_res);
         break;
       }
+#ifdef CONFIG_MK2
+      a26_scan_block(&st, a26_scanbuf, got, pos);
+#else
       a26_scan_block(&st, a26_scanbuf, carry + got, carry, pos - carry,
                      (uint8_t)(pos + got >= romsize));
       if(carry + got >= A26_SCAN_CARRY) {
@@ -471,6 +538,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
         a26_scanbuf[1] = a26_scanbuf[carry + got - 1];
         carry = A26_SCAN_CARRY;
       }
+#endif
       pos += got;
     }
     f_lseek(&file_handle, 0);
@@ -479,6 +547,13 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
 
   a26_decide(props, &st, romsize);
 
+#ifdef CONFIG_MK2
+  /* mk2: nothing below the decision is read -- the scheme travels in the player image
+     (memory.c), not in CHIPFEAT, and the diagnostic counters only fed the log line. */
+  printf("A26: %ld B scheme=%d SC=%d %s%s\n", (long)romsize, props->scheme, props->superchip,
+         props->error ? "NOIMPL:" : "ok",
+         props->error ? (const char*)props->error_param : "");
+#else
   props->score_3f          = a26_clamp8(st.score_3f);
   props->addr_distinct_3f  = a26_clamp8(st.dist_3f);
   props->abs_stores_3f     = a26_clamp8(st.abs_3f);
@@ -501,15 +576,6 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
   /* 3F=<score>/<positions>/<absolute stores>, SC=<flag>/<distinct read refs>,
      E0=<slice mask>: the last two of each are what the decision looks at, the
      rest is there to explain a verdict from a log alone. */
-#ifdef CONFIG_MK2
-  printf("A26: %ld B scheme=%d SC=%d/%d 3F=%d/%d/%d UA=%d/%d E0=%x FE=%x/%d/%d feat16=%04x %s%s\n",
-         (long)romsize, props->scheme, props->superchip, props->sc_read_refs,
-         props->score_3f, props->addr_distinct_3f, props->abs_stores_3f,
-         props->score_ua, props->addr_distinct_ua,
-         props->e0_slices_hit, st.fe_sigs, st.f8_sta[0], st.f8_sta[1], props->feat16,
-         props->error ? "NOIMPL:" : "ok",
-         props->error ? (const char*)props->error_param : "");
-#else
   printf("A26: %ld B scheme=%d SC=%d/%d 3F=%d/%d/%d UA=%d/%d E0=%x feat16=%04x %s%s\n",
          (long)romsize, props->scheme, props->superchip, props->sc_read_refs,
          props->score_3f, props->addr_distinct_3f, props->abs_stores_3f,

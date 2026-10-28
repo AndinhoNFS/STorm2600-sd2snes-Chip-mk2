@@ -96,7 +96,7 @@ Diferenças conhecidas do Passo 33 ainda em aberto:
   movimento preso).
 - **Chess**: janela de START do míssil logo depois de RESMx.
 - **Bobby Is Going Home**: tratado nas 232 linhas do Passo 34.
-- **Crackpots**: estalos no áudio.
+- **Crackpots**: estalos no áudio — **resolvido**; confirmado no console desde o Passo 33/34.
 - **Meta de folga**: +0,045 ns, abaixo da meta de +0,2 ns; os caminhos mais
   apertados são do sd2snes base, não do core.
 
