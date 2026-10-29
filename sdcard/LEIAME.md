@@ -133,7 +133,7 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
   [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e
   como recompilar estão em `firmware/`.
 - O `.a26` pede a confirmação de "core experimental" na primeira vez.
-- A detecção do FE segue o Stella (ver `firmware/LEIAME.md`). Os outros
+- A detecção do FE está descrita em `firmware/LEIAME.md`. Os outros
   arquivos de 8 KB continuam como F8.
 - O Superchip é implementado em F8SC e F6SC. O F4SC (32 KB) roda como F4 comum:
   a ROM do core é de 16 KB. Folga de timing do bitstream: +0,001 ns a 96 MHz.

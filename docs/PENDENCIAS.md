@@ -17,12 +17,12 @@
   vez de BRAM (a porta `rom_rd`/`rom_ack` já existe; o risco é a latência: a
   resposta tem de chegar em cerca de 3 clocks de cor). Libera o F4SC (26 ROMs
   distintas, ex. Fatal Run) e os demais de 32 KB.
-- **Superchip F8SC e F6SC, 54 de 88 ROMs ainda não OK contra o Stella** (Passo
+- **Superchip F8SC e F6SC, 54 de 88 ROMs ainda não OK contra o emulador de referência** (Passo
   36; ver abaixo): 6 com 1 pixel de diferença no TIA, 25 com 18 a 94 pixels
   (detalhe do TIA), 1 limite de captura, 8 com um bloco fixo de linhas
-  diferente (hipótese: o Stella enche a RAM do cartucho com valores aleatórios,
+  diferente (hipótese: o emulador de referência enche a RAM do cartucho com valores aleatórios,
   o core parte de zero), 14 cuja diferença varia com o tempo (podem ser o
-  estado inicial da RAM ou erro do Superchip; a verificar com o Stella com a
+  estado inicial da RAM ou erro do Superchip; a verificar no emulador de referência com a
   RAM zerada). Uma leitura da porta de escrita ($1000-$107F) devolve o byte da
   ROM e não grava; o console grava o valor do barramento.
 - **Mappers não suportados**: E0, E7, FA/12K, 64K, CV, UA, Supercharger.
@@ -79,7 +79,7 @@ Testado no console: as duas ROMs de teste do Superchip (`sc_ram_f8sc` e
 Falcon, Jr. Pac-Man, Millipede e Stargate; River Raid, Pitfall, Bobby Is Going
 Home e Decathlon iguais ao Passo 35.
 
-Em simulação (88 ROMs F8SC/F6SC, contra o Stella): 34 OK com a RAM contra 8 sem
+Em simulação (88 ROMs F8SC/F6SC, contra o emulador de referência): 34 OK com a RAM contra 8 sem
 ela, 26 viraram OK, nenhuma piorou. As 516 ROMs da régua: iguais, pixel a
 pixel, com o Superchip desligado. Folga de timing de **+0,001 ns** a 96 MHz
 (semente 7; é a menor já publicada): qualquer mudança no core pede nova varredura
@@ -180,7 +180,7 @@ foi usado no console: o Decathlon original abre com o firmware do Passo 25.
 
 ## Corrigidos no Passo 25
 
-- Firmware detecta o mapper FE (critério do Stella) e passa 5 ao player: o
+- Firmware detecta o mapper FE (critério de assinaturas) e passa 5 ao player: o
   Decathlon original abre no console.
 
 ## Corrigidos no Passo 24

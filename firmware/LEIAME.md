@@ -28,8 +28,8 @@ Nenhum outro arquivo do firmware foi alterado.
 - `fpga.h`: nome do bitstream, `/sd2snes/fpga_atari.bit`.
 - `atari.c` / `atari.h` (Passo 25): detecção do mapper FE, descrita abaixo.
 - `atari.c` / `memory.c` (Passo 36): Superchip. No Mk.II o `.a26` de 8 KB ou 16 KB
-  vale como Superchip pela regra de antes **ou** pela do Stella (os primeiros 128
-  bytes de cada banco de 4 KB se repetem nos 128 seguintes); a regra do Stella
+  vale como Superchip pela regra de antes **ou** pela do espelho (os primeiros 128
+  bytes de cada banco de 4 KB se repetem nos 128 seguintes); a regra do espelho
   não usa buffer, só compara dentro do bloco de 512 bytes da leitura. O
   `memory.c` grava o bit 4 do byte do mapper (`$7FF0`) quando há Superchip em F8
   ou F6; o F4 com Superchip continua F4 (a ROM do core tem 16 KB).
@@ -60,8 +60,7 @@ um hash da hora do build, então o md5 de um build novo nunca bate com o de
 
 ## Detecção do mapper FE (Passo 25)
 
-O critério é o mesmo do Stella (`CartDetector::isProbablyFE` e o ramo de 8 KB de
-`autodetectType`, commit `2c3d7023`). Um `.a26` de 8192 bytes vira mapper 5 (FE)
+O critério: cinco assinaturas de código e a regra do ramo de 8 KB. Um `.a26` de 8192 bytes vira mapper 5 (FE)
 quando atende às três condições:
 
 - tem uma destas sequências em qualquer lugar do arquivo:
@@ -75,7 +74,7 @@ Qualquer outro arquivo fica com o mapper de antes. A detecção só existe no Mk
 mesmo caminho dos outros mappers: `$7FF0` da imagem do player.
 
 Na coleção de 5.317 `.a26` do autor, só 13 arquivos mudaram de F8 para FE
-(Decathlon, Robot Tank e hacks dele, Thwocker), e a regra do Stella dá FE
+(Decathlon, Robot Tank e hacks dele, Thwocker), e a regra dá FE
 exatamente nos mesmos.
 
 No console (2026-10-14, com o bitstream do Passo 24): o Decathlon original abre.
@@ -113,7 +112,7 @@ Robot Tank e Thwocker foram testados só em simulação.
     CHIPFEAT e nada lê esses campos;
   - o mapa de 128 bits dos operandos de leitura do Superchip virou "primeiro operando + há outro?"
     (a decisão só pede dois distintos); a pergunta "o preâmbulo de 256 bytes é um byte constante?"
-    virou uma comparação de bloco, no mesmo lugar da regra do Stella;
+    virou uma comparação de bloco, no mesmo lugar da regra do espelho;
   - a varredura passou a ser uma só, byte a byte (`a26_scan_byte`), com o histórico dos quatro
     bytes anteriores em um `uint32_t`: some o carregamento de 2 bytes entre blocos de 512;
   - `a26_scan_byte` e `a26_decide` ficam fora de linha (`noinline`), o que no Mk.II economiza 73 bytes.

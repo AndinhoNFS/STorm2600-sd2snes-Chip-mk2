@@ -142,7 +142,7 @@ typedef struct {
   uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
 #endif
 #ifdef CONFIG_MK2
-  uint8_t  sc_mir_ok;     /* Stella's rule: the first 128 bytes of every 4K bank repeat in the next 128 */
+  uint8_t  sc_mir_ok;     /* mirror rule: the first 128 bytes of every 4K bank repeat in the next 128 */
   uint32_t fe_hist;       /* the 4 bytes before the current one (FE/F8 windows), newest in the low byte */
   uint8_t  fe_sigs;       /* 1 = one of the FE signatures found */
   uint8_t  f8_sta[2];     /* "STA $1FF9" / "STA $FFF9" windows, saturating at 2 (the rule asks for two) */
@@ -150,9 +150,7 @@ typedef struct {
 } a26_scan_t;
 
 #ifdef CONFIG_MK2
-/* FE: the same five signatures and the same rule as Stella's CartDetector
-   (isProbablyFE, and "isProbablyFE(image) && !f8" in the 8K branch of
-   autodetectType): any one of these 5-byte sequences anywhere in an 8K image, and
+/* FE: five signatures, and the 8K rule: any one of these 5-byte sequences anywhere in an 8K image, and
    neither "STA $1FF9" nor "STA $FFF9" found twice. */
 static const uint32_t a26_fe_sig4[5] = {   /* the first four bytes of each signature, oldest in the top byte */
   0x2000D0C6,  /* JSR $D000; DEC $C5  Decathlon */
@@ -238,8 +236,8 @@ static void a26_hotspot_hit(a26_scan_t *st, uint8_t lo, uint8_t indexed) {
 static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len, uint32_t base) {
   uint32_t i;
 
-  /* Superchip evidence #1 (every bank's 256-byte lead-in is one constant filler) and Stella's
-     rule (its first 128 bytes repeat in the next 128) need no buffer of their own: the lead-in
+  /* Superchip evidence #1 (every bank's 256-byte lead-in is one constant filler) and the
+     mirror rule (its first 128 bytes repeat in the next 128) need no buffer of their own: the lead-in
      of a bank is always inside ONE block, at buf[0].  A block too short to hold it (a truncated
      file) can only lose evidence. */
   if((base & 0xFFF) == 0) {
@@ -389,16 +387,16 @@ static uint8_t a26_superchip(const a26_scan_t *st) {
 }
 
 #ifdef CONFIG_MK2
-/* Superchip, Stella's rule (CartDetector::isProbablySC): the first 128 bytes of every
+/* Superchip, mirror rule: the first 128 bytes of every
    4K bank repeat in the next 128 (the RAM is mirrored there on the cartridge). It also
    catches images whose lead-in is not one constant filler (Crystal Castles, Dig Dug, ...)
    or that never read the RAM through two distinct addresses. Used for 8K (F8SC) and 16K
    (F6SC) only, in addition to a26_superchip(). */
-static uint8_t a26_superchip_stella(const a26_scan_t *st) {
+static uint8_t a26_superchip_mirror(const a26_scan_t *st) {
   return st->sc_mir_ok;
 }
 
-/* FE: a signature, and no "potential F8" (Stella asks for 2 hits of one store). */
+/* FE: a signature, and no "potential F8" (2 hits of one store are needed). */
 static uint8_t a26_probably_fe(const a26_scan_t *st) {
   return (uint8_t)(st->fe_sigs && st->f8_sta[0] < 2 && st->f8_sta[1] < 2);
 }
@@ -443,12 +441,12 @@ A26_NOINLINE static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
       props->scheme = A26_BS_F8;
       props->size_class = 2;
 #ifdef CONFIG_MK2
-      sc |= a26_superchip_stella(st);
+      sc |= a26_superchip_mirror(st);
 #endif
       props->superchip = sc;
 #ifdef CONFIG_MK2
-      /* after the refusals above and only without Superchip evidence: Stella tests
-         SC, 3F and UA before FE as well, and every other 8K image stays F8 */
+      /* after the refusals above and only without Superchip evidence: SC, 3F and UA
+         are tested before FE as well, and every other 8K image stays F8 */
       if(!sc && a26_probably_fe(st)) props->scheme = A26_BS_FE;
 #endif
       break;
@@ -458,7 +456,7 @@ A26_NOINLINE static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
       props->scheme = A26_BS_F6;
       props->size_class = 3;
 #ifdef CONFIG_MK2
-      sc |= a26_superchip_stella(st);
+      sc |= a26_superchip_mirror(st);
 #endif
       props->superchip = sc;
       break;

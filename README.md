@@ -53,7 +53,7 @@ Branch [`passo36`](../../tree/passo36), release `v0.11-p36`.
   para todos os bancos. É RAM distribuída (LUTs), porque os 16 blocos de RAM do
   FPGA estão em uso; o bit 5 do registrador 3 liga a RAM (versão `$0E`).
 - **Firmware**: um `.a26` de 8 KB ou 16 KB vale como Superchip pela regra de
-  antes ou pela do Stella (os primeiros 128 bytes de cada banco de 4 KB se
+  antes ou pela do espelho (os primeiros 128 bytes de cada banco de 4 KB se
   repetem nos 128 seguintes); o bit vai no byte do mapper e o player v17, que
   não mudou, o passa ao core. Na coleção só 8 arquivos mudam de classificação.
 - **Testado no console**: as duas ROMs de teste (`tools/tia_tests`, `sc_ram_f8sc`
@@ -61,7 +61,7 @@ Branch [`passo36`](../../tree/passo36), release `v0.11-p36`.
   Dig Dug, Crystal Castles, Klax, Secret Quest, Desert Falcon, Jr. Pac-Man,
   Millipede e Stargate. River Raid, Pitfall, Bobby Is Going Home e Decathlon
   ficam iguais ao Passo 35.
-- **Em simulação** (88 ROMs F8SC/F6SC, contra o Stella, quadros 10, 60 e 300, sem
+- **Em simulação** (88 ROMs F8SC/F6SC, contra o emulador de referência, quadros 10, 60 e 300, sem
   tecla): 34 OK com a RAM contra 8 sem ela; nenhuma piorou. As 516 ROMs da
   régua dão o mesmo resultado de antes, pixel a pixel, com o Superchip desligado.
   Os 54 que não ficam OK estão listados em `docs/PENDENCIAS.md`.
@@ -261,7 +261,7 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - O [Atari2600_MiSTer](https://github.com/MiSTer-devel/Atari2600_MiSTer) é só
   referência de comportamento (por exemplo, a numeração dos mappers).
 - As ferramentas em `tools/` usam o [ALE](https://github.com/Farama-Foundation/Arcade-Learning-Environment)
-  (núcleo do Stella) como referência; ele é instalado à parte com `pip`.
+  como referência; ele é instalado à parte com `pip`.
 - `fpga/tb_m6507_func.v` roda o teste funcional do 6502 de
   [Klaus Dormann](https://github.com/Klaus2m5/6502_65C02_functional_tests)
   (GPL-3.0), que não é distribuído aqui.

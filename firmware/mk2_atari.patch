@@ -1,5 +1,5 @@
 diff --git a/src/atari.c b/src/atari.c
-index ca550d6..ebcd378 100644
+index ca550d6..34d6a17 100644
 --- a/src/atari.c
 +++ b/src/atari.c
 @@ -20,8 +20,9 @@
@@ -41,7 +41,7 @@ index ca550d6..ebcd378 100644
  
  static uint8_t a26_in_table(const uint8_t *tbl, uint8_t n, uint8_t op) {
    uint8_t i;
-@@ -98,30 +107,100 @@ static uint8_t a26_is_direct(uint8_t op) {
+@@ -98,30 +107,98 @@ static uint8_t a26_is_direct(uint8_t op) {
    return a26_in_table(a26_op_direct, sizeof(a26_op_direct), op);
  }
  
@@ -80,7 +80,7 @@ index ca550d6..ebcd378 100644
    uint8_t  sc_lead_fill;  /* the fill byte of the bank being checked */
 +#endif
 +#ifdef CONFIG_MK2
-+  uint8_t  sc_mir_ok;     /* Stella's rule: the first 128 bytes of every 4K bank repeat in the next 128 */
++  uint8_t  sc_mir_ok;     /* mirror rule: the first 128 bytes of every 4K bank repeat in the next 128 */
 +  uint32_t fe_hist;       /* the 4 bytes before the current one (FE/F8 windows), newest in the low byte */
 +  uint8_t  fe_sigs;       /* 1 = one of the FE signatures found */
 +  uint8_t  f8_sta[2];     /* "STA $1FF9" / "STA $FFF9" windows, saturating at 2 (the rule asks for two) */
@@ -88,9 +88,7 @@ index ca550d6..ebcd378 100644
  } a26_scan_t;
  
 +#ifdef CONFIG_MK2
-+/* FE: the same five signatures and the same rule as Stella's CartDetector
-+   (isProbablyFE, and "isProbablyFE(image) && !f8" in the 8K branch of
-+   autodetectType): any one of these 5-byte sequences anywhere in an 8K image, and
++/* FE: five signatures, and the 8K rule: any one of these 5-byte sequences anywhere in an 8K image, and
 +   neither "STA $1FF9" nor "STA $FFF9" found twice. */
 +static const uint32_t a26_fe_sig4[5] = {   /* the first four bytes of each signature, oldest in the top byte */
 +  0x2000D0C6,  /* JSR $D000; DEC $C5  Decathlon */
@@ -142,7 +140,7 @@ index ca550d6..ebcd378 100644
  }
  
  /* Which 1K slice groups of the E0 window ($1FE0-$1FE7, $1FE8-$1FEF, $1FF0-$1FF7)
-@@ -136,12 +215,14 @@ static void a26_scan_reset(a26_scan_t *st) {
+@@ -136,12 +213,14 @@ static void a26_scan_reset(a26_scan_t *st) {
     to the first group, which is the only one it can reach. One instruction never
     lights two groups: walking its whole index range into the NEXT group would let
     a single accidental byte triple light two of them at once. */
@@ -157,7 +155,7 @@ index ca550d6..ebcd378 100644
  
  /* Scan one block of the image. buf[0..len) is the window to look at, of which
     the first `carry` bytes are the tail of the previous block (already seen by
-@@ -152,6 +233,23 @@ static void a26_hotspot_hit(a26_scan_t *st, uint8_t lo, uint8_t indexed) {
+@@ -152,6 +231,23 @@ static void a26_hotspot_hit(a26_scan_t *st, uint8_t lo, uint8_t indexed) {
     Kept free of any file/PSRAM access on purpose: this and a26_decide() are the
     whole detector, and the host gate (tests/host/run_a26_detect.sh) drives them
     through a26_id() over a stdio-backed FatFs. */
@@ -166,8 +164,8 @@ index ca550d6..ebcd378 100644
 +static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len, uint32_t base) {
 +  uint32_t i;
 +
-+  /* Superchip evidence #1 (every bank's 256-byte lead-in is one constant filler) and Stella's
-+     rule (its first 128 bytes repeat in the next 128) need no buffer of their own: the lead-in
++  /* Superchip evidence #1 (every bank's 256-byte lead-in is one constant filler) and the
++     mirror rule (its first 128 bytes repeat in the next 128) need no buffer of their own: the lead-in
 +     of a bank is always inside ONE block, at buf[0].  A block too short to hold it (a truncated
 +     file) can only lose evidence. */
 +  if((base & 0xFFF) == 0) {
@@ -181,7 +179,7 @@ index ca550d6..ebcd378 100644
  static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
                             uint32_t carry, uint32_t base, uint8_t last) {
    uint32_t i, end;
-@@ -194,13 +292,18 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
+@@ -194,13 +290,18 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
         rate at which random data trips the refusal. */
      if(b1 == 0x3F) {
        if(full && b0 == 0x8D && b2 == 0x00) {
@@ -201,7 +199,7 @@ index ca550d6..ebcd378 100644
      }
  
      if(!full) continue;
-@@ -210,7 +313,9 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
+@@ -210,7 +311,9 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
         than one hotspot is only credibly identified when the image references
         MORE THAN ONE of them (repeats of a single operand are much weaker). */
      if(b2 == 0x02 && (b1 == 0x20 || b1 == 0x40) && a26_is_direct(b0)) {
@@ -211,7 +209,7 @@ index ca550d6..ebcd378 100644
        st->ua_ops |= (b1 == 0x20) ? 0x01 : 0x02;
      }
  
-@@ -222,6 +327,11 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
+@@ -222,6 +325,11 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
         left out for the same reason: a table walk through that address range is
         the normal way to read ROM there. */
      if((b2 == 0x10 || b2 == 0xF0) && b1 >= 0x80 && a26_is_direct(b0)) {
@@ -223,7 +221,7 @@ index ca550d6..ebcd378 100644
        uint8_t idx = (uint8_t)(b1 - 0x80);
        uint8_t bit = (uint8_t)(1 << (idx & 7));
        if(st->sc_hits < 0xFFFF) st->sc_hits++;
-@@ -229,18 +339,22 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
+@@ -229,18 +337,22 @@ static void a26_scan_block(a26_scan_t *st, const uint8_t *buf, uint32_t len,
          st->sc_seen[idx >> 3] |= bit;
          st->sc_dist++;
        }
@@ -246,7 +244,7 @@ index ca550d6..ebcd378 100644
  
  /* "Strong evidence" predicates. Accidental bytes in data must never outvote the
     default for the image size, so only patterns that are implausible as data
-@@ -260,7 +374,11 @@ static uint8_t a26_ua_distinct(const a26_scan_t *st) {
+@@ -260,7 +372,11 @@ static uint8_t a26_ua_distinct(const a26_scan_t *st) {
  /* UA: both hotspots referenced. score_ua >= 4 is implied by that (each of the
     two operands scores 2) and is kept only so the threshold reads explicitly. */
  static uint8_t a26_strong_ua(const a26_scan_t *st) {
@@ -258,21 +256,21 @@ index ca550d6..ebcd378 100644
  }
  
  /* Superchip: the RAM shadows the first 256 bytes of EVERY 4K bank -- that ROM is
-@@ -270,6 +388,22 @@ static uint8_t a26_superchip(const a26_scan_t *st) {
+@@ -270,6 +386,22 @@ static uint8_t a26_superchip(const a26_scan_t *st) {
    return (uint8_t)(st->sc_lead_const && st->sc_dist >= 2);
  }
  
 +#ifdef CONFIG_MK2
-+/* Superchip, Stella's rule (CartDetector::isProbablySC): the first 128 bytes of every
++/* Superchip, mirror rule: the first 128 bytes of every
 +   4K bank repeat in the next 128 (the RAM is mirrored there on the cartridge). It also
 +   catches images whose lead-in is not one constant filler (Crystal Castles, Dig Dug, ...)
 +   or that never read the RAM through two distinct addresses. Used for 8K (F8SC) and 16K
 +   (F6SC) only, in addition to a26_superchip(). */
-+static uint8_t a26_superchip_stella(const a26_scan_t *st) {
++static uint8_t a26_superchip_mirror(const a26_scan_t *st) {
 +  return st->sc_mir_ok;
 +}
 +
-+/* FE: a signature, and no "potential F8" (Stella asks for 2 hits of one store). */
++/* FE: a signature, and no "potential F8" (2 hits of one store are needed). */
 +static uint8_t a26_probably_fe(const a26_scan_t *st) {
 +  return (uint8_t)(st->fe_sigs && st->f8_sta[0] < 2 && st->f8_sta[1] < 2);
 +}
@@ -281,7 +279,7 @@ index ca550d6..ebcd378 100644
  static void a26_noimpl(a26_romprops_t *props, const char *param) {
    props->error = MENU_ERR_NOIMPL;
    props->error_param = (const uint8_t*)param;
-@@ -286,7 +420,7 @@ static void a26_noimpl(a26_romprops_t *props, const char *param) {
+@@ -286,7 +418,7 @@ static void a26_noimpl(a26_romprops_t *props, const char *param) {
     turned ordinary F8/F6 titles away. Both schemes fall through to the default for
     their size and run wrong, which is the outcome this policy accepts for a scheme
     no signature can separate from a normal image. */
@@ -290,17 +288,17 @@ index ca550d6..ebcd378 100644
                         uint32_t romsize) {
    uint8_t sc = a26_superchip(st);
  
-@@ -308,13 +442,24 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
+@@ -308,13 +440,24 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
        if(a26_strong_ua(st))      { a26_noimpl(props, "UA"); return; }
        props->scheme = A26_BS_F8;
        props->size_class = 2;
 +#ifdef CONFIG_MK2
-+      sc |= a26_superchip_stella(st);
++      sc |= a26_superchip_mirror(st);
 +#endif
        props->superchip = sc;
 +#ifdef CONFIG_MK2
-+      /* after the refusals above and only without Superchip evidence: Stella tests
-+         SC, 3F and UA before FE as well, and every other 8K image stays F8 */
++      /* after the refusals above and only without Superchip evidence: SC, 3F and UA
++         are tested before FE as well, and every other 8K image stays F8 */
 +      if(!sc && a26_probably_fe(st)) props->scheme = A26_BS_FE;
 +#endif
        break;
@@ -310,12 +308,12 @@ index ca550d6..ebcd378 100644
        props->scheme = A26_BS_F6;
        props->size_class = 3;
 +#ifdef CONFIG_MK2
-+      sc |= a26_superchip_stella(st);
++      sc |= a26_superchip_mirror(st);
 +#endif
        props->superchip = sc;
        break;
  
-@@ -334,9 +479,11 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
+@@ -334,9 +477,11 @@ static void a26_decide(a26_romprops_t *props, const a26_scan_t *st,
    }
  }
  
@@ -327,7 +325,7 @@ index ca550d6..ebcd378 100644
  
  /* case-insensitive ".a26" extension check + one streaming pass over the image */
  void a26_id(a26_romprops_t *props, uint8_t *filename) {
-@@ -381,6 +528,9 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
+@@ -381,6 +526,9 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
                 (long)pos, (long)romsize, file_res);
          break;
        }
@@ -337,7 +335,7 @@ index ca550d6..ebcd378 100644
        a26_scan_block(&st, a26_scanbuf, carry + got, carry, pos - carry,
                       (uint8_t)(pos + got >= romsize));
        if(carry + got >= A26_SCAN_CARRY) {
-@@ -388,6 +538,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
+@@ -388,6 +536,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
          a26_scanbuf[1] = a26_scanbuf[carry + got - 1];
          carry = A26_SCAN_CARRY;
        }
@@ -345,7 +343,7 @@ index ca550d6..ebcd378 100644
        pos += got;
      }
      f_lseek(&file_handle, 0);
-@@ -396,6 +547,13 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
+@@ -396,6 +545,13 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
  
    a26_decide(props, &st, romsize);
  
@@ -359,7 +357,7 @@ index ca550d6..ebcd378 100644
    props->score_3f          = a26_clamp8(st.score_3f);
    props->addr_distinct_3f  = a26_clamp8(st.dist_3f);
    props->abs_stores_3f     = a26_clamp8(st.abs_3f);
-@@ -425,6 +583,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
+@@ -425,6 +581,7 @@ void a26_id(a26_romprops_t *props, uint8_t *filename) {
           props->e0_slices_hit, props->feat16,
           props->error ? "NOIMPL:" : "ok",
           props->error ? (const char*)props->error_param : "");
@@ -367,7 +365,7 @@ index ca550d6..ebcd378 100644
  }
  
  /* boot the SNES-side player instead of the .a26; the .a26 is staged separately */
-@@ -448,23 +607,3 @@ void a26_load_rom(void) {
+@@ -448,23 +605,3 @@ void a26_load_rom(void) {
    printf("A26: staging %s -> PSRAM %06lx\n", a26_rompath, (long)A26_ROM_PSRAM);
    load_sram_offload((uint8_t*)a26_rompath, A26_ROM_PSRAM, 0);
  }
@@ -549,17 +547,3 @@ index 0c6a99b..fa9f813 100644
      romprops.has_dspx = 0; romprops.has_gsu = 0; romprops.has_sa1 = 0;
      romprops.fpga_dspfeat = 0;
      romprops.error = MENU_ERR_OK;
-diff --git a/tests/host/a26_detect_cli.c b/tests/host/a26_detect_cli.c
-index 0260e91..6fa7e01 100644
---- a/tests/host/a26_detect_cli.c
-+++ b/tests/host/a26_detect_cli.c
-@@ -79,6 +79,9 @@ static const char *scheme_name(const a26_romprops_t *p) {
-     case A26_BS_F8: return "F8";
-     case A26_BS_F6: return "F6";
-     case A26_BS_F4: return "F4";
-+#ifdef CONFIG_MK2
-+    case A26_BS_FE: return "FE";
-+#endif
-     default:        return "?";
-   }
- }
