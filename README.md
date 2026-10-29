@@ -248,6 +248,28 @@ docs/    design, layout do buffer, descrição do player, pendências e notas
 
 Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 
+## Origem e referências de teste
+
+- O core (6507, TIA, RIOT, mappers), o player SNES e o patch de firmware foram
+  escritos do zero para este projeto.
+- As regras do TIA vêm da documentação pública do chip: *TIA Hardware Notes*
+  (Andrew Towers), os esquemáticos do TIA e o *Stella Programmer's Guide*
+  (Atari, 1979).
+- Os emuladores Stella e MiSTer (Atari2600) foram usados só como referência de
+  comparação: roda-se a mesma ROM nos dois e no nosso core e comparam-se as
+  imagens. Nenhum código deles faz parte deste repositório.
+
+## Origin and test references
+
+- The core (6507, TIA, RIOT, mappers), the SNES player and the firmware patch
+  were written from scratch for this project.
+- The TIA rules come from the public documentation of the chip: *TIA Hardware
+  Notes* (Andrew Towers), the TIA schematics and the *Stella Programmer's Guide*
+  (Atari, 1979).
+- The Stella and MiSTer (Atari2600) emulators were used only as comparison
+  references: the same ROM is run on both and on our core, and the images are
+  compared. None of their code is part of this repository.
+
 ## Origem do código
 
 - O Verilog em `fpga/` foi escrito para este projeto (GPL-2.0-or-later), com
