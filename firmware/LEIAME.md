@@ -2,8 +2,8 @@
 
 O `sdcard/sd2snes/firmware.img` é o firmware do
 [ludufre/sd2snes](https://github.com/ludufre/sd2snes) na tag oficial
-`v1.11.2-br-v2.17` (versão `1.11.2-br-2.17`), compilado para o Mk.II com as
-mudanças desta pasta (Passo 35; o Passo 25 usou o commit `1b5d9d79`, que é a
+`v1.11.2-br-v2.18.1` (versão `1.11.2-br-2.18.1`), compilado para o Mk.II com as
+mudanças desta pasta (Passo 37; os Passos 35 e 36 usaram a tag `v1.11.2-br-v2.17`; o Passo 25 usou o commit `1b5d9d79`, que é a
 v2.17 mais 4 commits, e o `menu.bin` dele só existe compilando o `snes/` desse
 commit). O
 firmware é GPL versão 2; os cabeçalhos de licença e de autoria originais dos
@@ -11,7 +11,7 @@ arquivos foram mantidos.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `mk2_atari.patch` | diferença completa em relação à tag `v1.11.2-br-v2.17` (5 arquivos) |
+| `mk2_atari.patch` | diferença completa em relação à tag `v1.11.2-br-v2.18.1` (5 arquivos) |
 | `src/atari.c`, `src/atari.h`, `src/fpga.h`, `src/memory.c` | os quatro arquivos do firmware já modificados, inteiros |
 | `tests/host/a26_detect_cli.c` | o programa de teste no PC que roda o detector de `atari.c`; só ganhou o nome "FE" |
 
@@ -41,7 +41,7 @@ Nenhum outro arquivo do firmware foi alterado.
 
 ```
 git clone https://github.com/ludufre/sd2snes && cd sd2snes
-git checkout v1.11.2-br-v2.17
+git checkout v1.11.2-br-v2.18.1
 git apply /caminho/para/firmware/mk2_atari.patch
 cd src && make CONFIG=config-mk2
 ```
@@ -97,3 +97,33 @@ Robot Tank e Thwocker foram testados só em simulação.
   com este patch é idêntico ao oficial (só os bytes 4 a 7 do cabeçalho, o hash
   da hora do build, diferem).
 - Tamanho do Mk.II: 112.327 bytes (limite 122.880), sobra de 10.553 bytes.
+
+## Passo 37: base v1.11.2-br-v2.18.1
+
+- Base: tag `v1.11.2-br-v2.18.1` do ludufre (não a `v2.18`, que tem um defeito no menu de
+  Configuração). `atari.c`, `atari.h` e `verilog/sd2snes_a26` do ludufre não mudaram da 2.17 para
+  a 2.18.1; `memory.c` e `fpga.h` mudaram bastante, e o patch foi refeito sobre eles (os mesmos
+  ganchos, em `load_set_features`, `load_setup_masks`, `load_stage_consoles` e `load_identify`).
+- O Mk.II da 2.18.1, sem o modo Atari, usa 121.739 bytes de flash e sobram 1.141 até o limite
+  (o `ld` recusa a ligação se o `.data` inicializado passar do fim da flash). O modo Atari com o
+  `atari.c` do Passo 36 passava desse limite em 619 bytes. O que foi feito para caber, **só dentro de
+  `CONFIG_MK2`** (o Mk.III segue idêntico):
+  - saíram do Mk.II os contadores que só alimentavam a linha de log (`score_3f`, `dist_3f`,
+    contagem de E0, `score_ua`, `feat16`, o `size_class`), porque no Mk.II o esquema não vai por
+    CHIPFEAT e nada lê esses campos;
+  - o mapa de 128 bits dos operandos de leitura do Superchip virou "primeiro operando + há outro?"
+    (a decisão só pede dois distintos); a pergunta "o preâmbulo de 256 bytes é um byte constante?"
+    virou uma comparação de bloco, no mesmo lugar da regra do Stella;
+  - a varredura passou a ser uma só, byte a byte (`a26_scan_byte`), com o histórico dos quatro
+    bytes anteriores em um `uint32_t`: some o carregamento de 2 bytes entre blocos de 512;
+  - `a26_scan_byte` e `a26_decide` ficam fora de linha (`noinline`), o que no Mk.II economiza 73 bytes.
+  O veredito (esquema, Superchip, recusa) não muda: o detector do Passo 37 e o do Passo 36,
+  ambos compilados com `CONFIG_MK2`, dão o mesmo resultado nos 5.055 arquivos da biblioteca
+  e em 4.000 imagens sintéticas com padrões plantados (3F, UA, leitura da RAM do Superchip, FE,
+  `STA $1FF9`, preâmbulo constante e espelho de 128 bytes, inclusive nas fronteiras de bloco).
+- Tamanho do Mk.II: 122.807 bytes na imagem; sobram **73 bytes** antes do limite do
+  `.data` inicializado em flash (o `ld` recusa a ligação se estourar). Qualquer acréscimo
+  em `atari.c` ou `memory.c` no Mk.II exige tirar outro tanto.
+- `make modcheck` (os módulos de cartão `fileops.bin` e `rmdir.bin` cabem no bloco de 10.960
+  bytes depois do `ptrcache`, com o espaço de trabalho de 1.792 bytes) passa para o Mk.II e o Mk.III, igual à
+  tag sem o patch; o `ptrcache` fica no mesmo endereço.
