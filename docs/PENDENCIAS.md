@@ -2,6 +2,11 @@
 
 ## Bugs abertos
 
+- **Flash do Mk.II com só 73 bytes de sobra** (Passo 37): com o patch do Atari
+  sobre a v2.18.1 o firmware do Mk.II ocupa 122.214 bytes dos 128 KB
+  utilizáveis (o `.data` inicializado não pode passar de 0x20000; o `ld` recusa
+  a ligação). Qualquer acréscimo ao firmware do Mk.II exige tirar outro tanto
+  (por exemplo, enxugar mais o detector dentro de `CONFIG_MK2`).
 - **Linhas com mais de 4 cores**: o SNES recebe 4 cores por linha. Na
   coleção, 7.142 das 1.429.995 linhas medidas (119 ROMs, quase todas demos de
   cor) têm mais de 4. Opções estudadas (8 paletas por tile com HDMA, 16 cores
@@ -50,6 +55,19 @@ mais novo e grava a trava) da trava dos 3 buffers com a captura de 232 linhas:
   a publicação até essas palavras saírem (até 1 linha de atraso, bit novo).
 - Fica em observação até confirmar a olho nu no console e fazer o A/B com o
   Passo 33 + player v14.
+
+## Aprovado no console (Passo 37, firmware sobre a v2.18.1, 28/10/2026)
+
+`firmware.img` (Passo 37, sobre a release oficial v1.11.2-br-v2.18.1) md5
+`31da69608e230b9d38323ae556a5fcb0`; `fpga_atari.bit` (Passo 36) md5
+`d33d69b587c485e9435126053061b8a9` e `atari_snes.bin` (player v17) md5
+`4074bd4c8861c1dd586a8799d16e412f`, inalterados. Testado no console: menu e
+Configuração da 2.18.1, `.a26` com o nosso core, Superchip, FE e jogos de SNES.
+O detector do Atari, enxugado só no Mk.II, dá o mesmo resultado do Passo 36 nos
+5.055 arquivos e em 4.000 imagens sintéticas. O Mk.III compilado com o patch é
+idêntico à tag sem o patch. Instalação: pacote oficial v1.11.2-br-v2.18.1
+inteiro (não a v2.18) + os 3 arquivos. Estalos do Crackpots: resolvidos
+(confirmado no console desde o Passo 33/34).
 
 ## Aprovado no console (Passo 36, Superchip F8SC e F6SC, 23/10/2026)
 

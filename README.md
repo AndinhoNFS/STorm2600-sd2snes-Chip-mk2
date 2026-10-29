@@ -16,13 +16,33 @@ Projetos de base:
 |---|---|
 | Player SNES | v17 (`atari_snes.bin`, md5 `4074bd4c…`) |
 | Bitstream FPGA | Passo 36 (`fpga_atari.bit`, md5 `d33d69b5…`), versão `$0E` em `$2027` |
-| Firmware | Passo 36 (`firmware.img`, md5 `789fb4f5…`), sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes; detecta o mapper FE e o Superchip |
+| Firmware | Passo 37 (`firmware.img`, md5 `31da6960…`), sobre a release oficial v1.11.2-br-v2.18.1 do ludufre/sd2snes; detecta o mapper FE e o Superchip; sobram 73 bytes na flash do Mk.II |
 | Uso do FPGA | 5455/7168 LUTs, 3141/3584 slices (87%), 16/16 BRAM, folga +0,001 ns a 96 MHz |
 
-Passo 36 + player v17 aprovados pelo autor no console em 23/10/2026. Passo 34 + Passo 35 + player v17 aprovados em 22/10/2026. Passo 33 + player v14 aprovados em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
+Passo 37 (firmware sobre a v2.18.1) aprovado pelo autor no console em 28/10/2026. Passo 36 + player v17 aprovados em 23/10/2026. Passo 34 + Passo 35 + player v17 aprovados em 22/10/2026. Passo 33 + player v14 aprovados em 21/10/2026. Passo 31 + player v13 (aprovado antes) testados e OK: Checkers, H.E.R.O., Seaquest, River Raid, Pitfall, Decathlon, Pac‑Man, Boxing e Combat Tank AI.
 Histórico de testes no console: Passo 23 (Pitfall, River Raid, Pac‑Man, Enduro,
 Frostbite e Boxing corretos), Passos 24/25 (Decathlon original abre), Passo 26
 (Crackpots e Decathlon sem os pixels da bola fora do lugar).
+
+### Passo 37 (firmware sobre a v2.18.1): aprovado no console em 28/10/2026
+
+Branch [`passo37`](../../tree/passo37), release `v0.12-p37`. Só o firmware muda;
+o bitstream (Passo 36) e o player v17 são os mesmos.
+
+- **Base v1.11.2-br-v2.18.1** do ludufre (não a v2.18, que tem um defeito no
+  menu de Configuração). O pacote traz módulos de cartão (gerenciador de
+  arquivos, apagar pasta e outros), idiomas e núcleos novos; a instalação passa a
+  usar o pacote da 2.18.1 inteiro.
+- **Flash do Mk.II: só 73 bytes de sobra.** O detector do Atari do Passo 36 não
+  cabia na 2.18.1 (faltavam 619 bytes); ele foi enxugado só dentro de
+  `CONFIG_MK2` (contadores só de log, mapa do Superchip, varredura byte a byte).
+  O resultado é o mesmo: 0 diferenças em 5.055 arquivos e em 4.000 imagens
+  sintéticas. Qualquer acréscimo ao firmware do Mk.II exige tirar outro tanto.
+- O Mk.III compilado com o patch é idêntico ao da tag sem o patch (só o hash de
+  hora do cabeçalho difere); os módulos de cartão passam na verificação de
+  espaço.
+- **Testado no console**: menu 2.18.1 e Configuração, `.a26` com o nosso core,
+  Superchip, FE e jogos de SNES.
 
 ### Passo 36 (Superchip F8SC e F6SC) + player v17: aprovado no console em 23/10/2026
 
@@ -246,7 +266,7 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
   [Klaus Dormann](https://github.com/Klaus2m5/6502_65C02_functional_tests)
   (GPL-3.0), que não é distribuído aqui.
 - O `sdcard/sd2snes/firmware.img` é o firmware do sd2snes (GPL versão 2) na
-  tag `v1.11.2-br-v2.17`, compilado com as mudanças de [`firmware/`](firmware/):
+  tag `v1.11.2-br-v2.18.1`, compilado com as mudanças de [`firmware/`](firmware/):
   o patch e os quatro arquivos modificados, com os cabeçalhos originais.
 - O `sdcard/sd2snes/fpga_atari.bit` contém, além do core deste repositório, o
   restante do FPGA do sd2snes (`verilog/sd2snes_base` do mesmo commit).
@@ -255,7 +275,7 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - O bitstream é gerado a partir de `fpga/` e do sd2snes no commit `1b5d9d79`;
   o passo a passo (ISE 14.7, `make`, `utils/rle`, semente 13) está em
   [`fpga/LEIAME.md`](fpga/LEIAME.md).
-- Fonte correspondente (GPL): a do `firmware.img` é a tag `v1.11.2-br-v2.17` de
+- Fonte correspondente (GPL): a do `firmware.img` é a tag `v1.11.2-br-v2.18.1` de
   [ludufre/sd2snes](https://github.com/ludufre/sd2snes) mais a pasta
   [`firmware/`](firmware/) deste repositório; a do `fpga_atari.bit` é o commit
   `1b5d9d79` do mesmo projeto mais a pasta [`fpga/`](fpga/).
@@ -285,12 +305,15 @@ Só para o sd2snes **Mk.II**.
 
 1. **Guarde uma cópia da pasta `/sd2snes` do cartão**, ou pelo menos do
    `/sd2snes/firmware.img` (ver Aviso acima).
-2. Baixe o pacote oficial [v1.11.2-br-v2.17 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.17)
-   (`sd2snes_firmware_v1.11.2-br-2.17.zip`) e copie a pasta `sd2snes` dela
-   **inteira** para a raiz do cartão. Ela sobrescreve `menu.bin`, `m3nu.bin`,
-   `igmenu.bin`, `menu.spc`, `savestate_fixes.yml`, os `firmware.*`,
-   `a26_snes.bin` e os núcleos `fpga_*`, e traz arquivos novos (`onboarding.bin`,
-   `welcome.*`, `music/`...): guarde antes o que você tiver personalizado.
+2. Baixe o pacote oficial [v1.11.2-br-v2.18.1 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.18.1)
+   (`sd2snes_firmware_v1.11.2-br-2.18.1.zip`; **não** a v2.18, que tem um defeito no menu de
+   Configuração) e copie a pasta `sd2snes` dela **inteira** para a raiz do
+   cartão. Ela sobrescreve `menu.bin`, `m3nu.bin`, `igmenu.bin`, `onboarding.bin`,
+   `welcome.fmv`, os `firmware.*`, os núcleos `fpga_*` e os players de outros
+   consoles, e acrescenta 18 arquivos (módulos de cartão como `fileops.bin` e
+   `rmdir.bin`, `xc_soc.bin`, núcleos novos e a pasta `lang/`). Não toca
+   `atari_snes.bin` nem `fpga_atari.bit`. Guarde antes o que você tiver
+   personalizado.
 3. Baixe da página de Releases deste projeto o `sd2snes-atari-files.zip` e
    extraia na raiz do cartão (ele já traz a pasta `sd2snes/`), ou copie os 3
    arquivos de [`sdcard/sd2snes/`](sdcard/sd2snes/) — `fpga_atari.bit`,
@@ -299,13 +322,15 @@ Só para o sd2snes **Mk.II**.
 4. Se quiser, confira os md5 (`sdcard/MD5SUMS`):
    `fpga_atari.bit` `d33d69b587c485e9435126053061b8a9`,
    `atari_snes.bin` `4074bd4c8861c1dd586a8799d16e412f`,
-   `firmware.img` `789fb4f590d76aebfc09a745adb1bfd1`.
+   `firmware.img` `31da69608e230b9d38323ae556a5fcb0`.
 5. Ponha as ROMs `.a26` em qualquer pasta do cartão e ligue o console. Na
    primeira partida o bootloader grava o `firmware.img`. Na primeira vez que
-   abrir um `.a26`, o menu da 2.17 pede a confirmação de "core experimental"
+   abrir um `.a26`, o menu pede a confirmação de "core experimental"
    (dá para marcar "não avisar de novo").
 
-Testado no console com o firmware do Passo 36 e o pacote oficial v1.11.2-br-v2.17
+Aviso: o firmware do Mk.II fica com só **73 bytes** de sobra na flash.
+
+Testado no console com o firmware do Passo 37 e o pacote oficial v1.11.2-br-v2.18.1
 inteiro. Como voltar atrás está em [`sdcard/LEIAME.md`](sdcard/LEIAME.md).
 ROMs de Atari não são distribuídas com este projeto.
 

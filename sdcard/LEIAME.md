@@ -4,13 +4,13 @@ Esta pasta tem só os 3 arquivos que o modo Atari acrescenta ou substitui na pas
 `/sd2snes/` do cartão do sd2snes (Mk.II). O resto da pasta (menu, demais cores
 do FPGA) vem da release do sd2snes (passo 1 da Instalação).
 
-Estado: **Passo 36**, aprovado no console em 23/10/2026: bitstream do Passo 36 (versão `$0E`, Superchip F8SC e F6SC), player v17 (o mesmo do Passo 35) e o firmware do Passo 36, feito sobre a release oficial v1.11.2-br-v2.17 do ludufre/sd2snes.
+Estado: **Passo 37**, aprovado no console em 28/10/2026: bitstream do Passo 36 (versão `$0E`, Superchip F8SC e F6SC) e player v17, ambos inalterados, e o firmware do Passo 37, feito sobre a release oficial v1.11.2-br-v2.18.1 do ludufre/sd2snes (não a v2.18, que tem um defeito no menu de Configuração).
 
 | Arquivo | Tamanho | md5 | O que é |
 |---|---|---|---|
 | `sd2snes/fpga_atari.bit` | 129888 | `d33d69b587c485e9435126053061b8a9` | bitstream do core do Atari (Passo 36: Superchip F8SC e F6SC, versão `$0E`; mantém a captura de 232 linhas do Passo 34 e o TIA do Passo 33) |
 | `sd2snes/atari_snes.bin` | 32768 | `4074bd4c8861c1dd586a8799d16e412f` | player SNES v17 (232 linhas; X paleta, Y nível, R pausa com PAUSE na tela), já com o nome que o firmware abre |
-| `sd2snes/firmware.img` | 112435 | `789fb4f590d76aebfc09a745adb1bfd1` | firmware do Mk.II com o modo Atari, a detecção do FE e a do Superchip, feito sobre a tag `v1.11.2-br-v2.17` (Passo 36); casa com o `menu.bin` da própria v2.17 |
+| `sd2snes/firmware.img` | 122807 | `31da69608e230b9d38323ae556a5fcb0` | firmware do Mk.II com o modo Atari, a detecção do FE e a do Superchip, feito sobre a tag `v1.11.2-br-v2.18.1` (Passo 37); casa com o `menu.bin` da própria 2.18.1 |
 
 Os mesmos md5 estão em `MD5SUMS`.
 
@@ -29,6 +29,11 @@ Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
   flash quando a versão do arquivo é diferente da gravada e o CRC confere; um
   arquivo corrompido não é gravado. Ponha no cartão um `firmware.img` válido (o
   que você guardou) e ligue o console.
+- **Flash do Mk.II quase cheia**: com o nosso patch sobre a 2.18.1 sobram só
+  **73 bytes** (o Mk.II tem 128 KB; o `.data` inicializado não pode passar de
+  0x20000). Para caber, o detector do Atari foi enxugado só dentro de
+  `CONFIG_MK2` (o resultado é o mesmo do Passo 36). Qualquer acréscimo ao
+  firmware do Mk.II exige tirar outro tanto.
 - Projeto independente, não afiliado à Atari nem aos autores do sd2snes e do
   MiSTer. Não inclui ROMs.
 
@@ -36,29 +41,34 @@ Sem nenhuma garantia (ver a `LICENSE` na raiz); use por sua conta e risco.
 
 0. **Guarde uma cópia da pasta `/sd2snes` do cartão inteira.** O `firmware.img`
    daqui substitui o firmware do cartão, não só o modo Atari.
-1. Baixe a release [v1.11.2-br-v2.17 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.17)
-   (`sd2snes_firmware_v1.11.2-br-2.17.zip`) e copie a pasta `sd2snes` dela
+1. Baixe a release [v1.11.2-br-v2.18.1 do ludufre/sd2snes](https://github.com/ludufre/sd2snes/releases/tag/v1.11.2-br-v2.18.1)
+   (`sd2snes_firmware_v1.11.2-br-2.18.1.zip`; **não** a v2.18) e copie a pasta `sd2snes` dela
    **inteira** para a raiz do cartão. Isso sobrescreve `menu.bin`, `m3nu.bin`,
-   `igmenu.bin`, `menu.spc`, `savestate_fixes.yml`, os `firmware.*`, `a26_snes.bin`
-   (o player do Mk.III do ludufre; o nosso é `atari_snes.bin`) e os núcleos
-   `fpga_*`, e acrescenta os arquivos novos da 2.17 (`onboarding.bin`,
-   `welcome.*`, `music/` e outros). Se você personalizou o `menu.spc` ou o
-   `savestate_fixes.yml`, guarde-os antes. Vindo de uma 2.16.x, a 2.17 não move
-   nenhum arquivo do cartão; vindo da 2.15 ou anterior, siga as notas da 2.16
-   do ludufre (Web Manager).
+   `igmenu.bin`, `onboarding.bin`, `welcome.fmv`, os `firmware.*`, os núcleos
+   `fpga_*` e os players `gbc_snes.bin`, `nes_snes.bin` e `sms_snes.bin`, e
+   acrescenta 18 arquivos novos: os módulos de cartão (`fileops.bin`,
+   `rmdir.bin`, `nsfplay.bin`, `pcmplay.bin`, `memtest.bin`, `rtc7110.bin`;
+   os dois primeiros são necessários ao gerenciador de arquivos do menu),
+   `xc_soc.bin`, núcleos novos (`fpga_xc.*`, `fpga_dspx.bit` etc.) e a pasta
+   `lang/` (japonês e chinês). Não toca `config.yml`, `lastgame.cfg`,
+   `atari_snes.bin` nem `fpga_atari.bit`. Faça o passo 0 antes. Para voltar da
+   2.18.1, restaure a cópia.
 2. Copie os 3 arquivos desta pasta `sd2snes/` (`fpga_atari.bit`,
    `atari_snes.bin`, `firmware.img`) para a pasta `sd2snes` do cartão,
    substituindo o `firmware.img` da zip. Antes, se quiser, confira os md5:
    dentro de `sdcard/`, `md5sum -c MD5SUMS`.
 3. Ponha as ROMs `.a26` em qualquer pasta do cartão (não são distribuídas com
    este projeto). Ligue o console: o bootloader grava o `firmware.img` na
-   primeira partida, e a 2.17 mostra o tour de boas-vindas.
+   primeira partida, e a 2.18.1 pode mostrar o tour de boas-vindas.
 4. Na primeira vez que abrir um `.a26`, o menu pede a confirmação de "core
    experimental"; marque "não avisar de novo" se não quiser vê-la outra vez.
 
-**Testado** no console com o firmware do Passo 36 junto com o pacote oficial
-v1.11.2-br-v2.17 inteiro (o firmware do Passo 25 com o menu da 2.16.4 mostrava
-as pastas como "?10", "?G": o menu era anterior ao firmware).
+**Testado** no console com o firmware do Passo 37 junto com o pacote oficial
+v1.11.2-br-v2.18.1 inteiro: menu e Configuração da 2.18.1, `.a26` com o nosso
+core, Superchip, FE e jogos de SNES. (Firmware e `menu.bin` têm de ser da mesma
+versão: o firmware do Passo 25 com o menu da 2.16.4 mostrava as pastas como
+"?10", "?G".) O firmware do Passo 36, sobre a 2.17, só serve com o `menu.bin`
+da 2.17 (Release `v0.11-p36`).
 
 ## Voltar ao bitstream e ao player anteriores
 
@@ -105,8 +115,10 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
 
 ## Avisos
 
-- Passo 36 (bitstream do Passo 36 + player v17 + firmware sobre a 2.17)
-  aprovado pelo autor no console em 23/10/2026: as duas ROMs de teste do
+- Passo 37 (firmware sobre a 2.18.1; bitstream do Passo 36 e player v17
+  inalterados) aprovado pelo autor no console em 28/10/2026: o detector do
+  Atari dá o mesmo resultado do Passo 36 nos 5.055 arquivos da coleção. Passo 36
+  (bitstream do Passo 36 + player v17 + firmware sobre a 2.17) aprovado pelo autor no console em 23/10/2026: as duas ROMs de teste do
   Superchip (verdes), Dig Dug, Crystal Castles, Klax, Secret Quest, Desert
   Falcon, Jr. Pac-Man, Millipede e Stargate; River Raid, Pitfall, Bobby Is
   Going Home e Decathlon iguais ao Passo 35. Passo 35 (bitstream do Passo 34 +
@@ -120,7 +132,7 @@ diferente da gravada, e só grava se o CRC do arquivo conferir.
   oficial). Ele é uma cópia modificada do firmware do
   [sd2snes](https://github.com/ludufre/sd2snes) (GPL versão 2); as mudanças e
   como recompilar estão em `firmware/`.
-- O `.a26` pede a confirmação de "core experimental" da 2.17 na primeira vez.
+- O `.a26` pede a confirmação de "core experimental" na primeira vez.
 - A detecção do FE segue o Stella (ver `firmware/LEIAME.md`). Os outros
   arquivos de 8 KB continuam como F8.
 - O Superchip é implementado em F8SC e F6SC. O F4SC (32 KB) roda como F4 comum:
