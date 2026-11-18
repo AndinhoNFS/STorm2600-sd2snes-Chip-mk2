@@ -11,7 +11,7 @@
 //                       gives the ROM byte; the ROM bytes under the window are never seen.
 //
 // run:  iverilog -g2005 -Wall -o tb_core tb_a26_core.v a26_core.v m6507.v \
-//                riot6532.v tia.v tia_audio.v && vvp tb_core
+//                riot6532.v tia.v tia_hc.v tia_obj.v tia_audio.v && vvp tb_core
 `timescale 1ns / 1ps
 
 // --------------------------------------------------------------------------

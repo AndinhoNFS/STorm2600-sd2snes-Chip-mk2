@@ -6,7 +6,7 @@
 // top of tia.v.  It checks coherence with that model, not with real
 // hardware.
 //
-// run:  iverilog -g2005 -Wall -o tb_tia tb_tia.v tia.v && vvp tb_tia
+// run:  iverilog -g2005 -Wall -o tb_tia tb_tia.v tia.v tia_hc.v tia_obj.v && vvp tb_tia
 `timescale 1ns / 1ps
 
 module tb_tia;

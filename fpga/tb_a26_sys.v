@@ -11,7 +11,7 @@
 // video writer left in the PSRAM model and the status registers.
 //
 // run:  iverilog -g2005 -Wall -o tb_sys tb_a26_sys.v a26_regs.v a26_mem.v \
-//          slot_model.v a26_core.v a26_vidwr.v a26_tdict.v m6507.v riot6532.v tia.v tia_audio.v && vvp tb_sys
+//          slot_model.v a26_core.v a26_vidwr.v a26_tdict.v m6507.v riot6532.v tia.v tia_hc.v tia_obj.v tia_audio.v && vvp tb_sys
 `timescale 1ns / 1ps
 
 module tb_a26_sys;

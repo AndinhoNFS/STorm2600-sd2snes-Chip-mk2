@@ -30,15 +30,22 @@ tia, tia_hc, tia_obj, tia_audio, a26_core, a26_vidwr, a26_tdict, a26_mem, a26_re
   (o git da máquina de síntese é antigo demais para clonar). Firmware: tag `v1.11.2-br-v2.18.1`.
 
 ## Testes (rodar tudo após qualquer mudança)
-O comando de cada testbench está no cabeçalho do arquivo (`// run:`). O `tia.v` precisa de
-`tia_hc.v` e `tia_obj.v` (Passo 33):
+Dentro de `fpga/` (iverilog 12.0; todos terminam com PASS, conferido em 2026-11-18).
 iverilog -g2005 -Wall -o tb_tia tb_tia.v tia.v tia_hc.v tia_obj.v && vvp tb_tia
+iverilog -g2005 -Wall -o tb_core tb_a26_core.v a26_core.v m6507.v riot6532.v tia.v tia_hc.v tia_obj.v tia_audio.v && vvp tb_core
+iverilog -g2005 -Wall -o tb_sys tb_a26_sys.v a26_regs.v a26_mem.v slot_model.v a26_core.v a26_vidwr.v a26_tdict.v m6507.v riot6532.v tia.v tia_hc.v tia_obj.v tia_audio.v && vvp tb_sys
+iverilog -g2005 -Wall -o tb_top tb_a26_top.v a26_top.v a26_regs.v a26_mem.v slot_model.v a26_core.v a26_vidwr.v a26_tdict.v m6507.v riot6532.v tia.v tia_hc.v tia_obj.v tia_audio.v && vvp tb_top
 iverilog -g2005 -o tb_vidwr tb_a26_vidwr.v a26_vidwr.v a26_tdict.v && vvp tb_vidwr
 iverilog -g2005 -o tb_tdict tb_a26_tdict.v a26_tdict.v && vvp tb_tdict
 iverilog -g2005 -o tb_mem tb_a26_mem.v a26_mem.v slot_model.v && vvp tb_mem
 iverilog -g2005 -o tb_i2s tb_a26_i2s.v a26_i2s.v && vvp tb_i2s
-(core, sys e top: ver o cabeçalho; m6507: tb_m6507_cycles.v e tb_m6507_func.v com func_test.hex;
-riot: tb_riot.v; áudio: tb_tia_audio.v)
+iverilog -g2005 -o tb_i2s_eq tb_a26_i2s_eq.v a26_i2s.v experimental/a26_i2s_p31_old.v && vvp tb_i2s_eq
+iverilog -g2005 -Wall -o tb_cycles tb_m6507_cycles.v m6507.v && vvp tb_cycles
+iverilog -g2005 -Wall -o tb_riot tb_riot.v riot6532.v && vvp tb_riot
+iverilog -g2005 -Wall -o tb_audio tb_tia_audio.v tia_audio.v && vvp tb_audio
+tb_m6507_func.v precisa de `func_test.hex` (não distribuído, ver `fpga/LEIAME.md`); sem ele imprime
+"FAIL timeout" e o `vvp` sai com 0 mesmo assim: julgar pela linha PASS/FAIL, não pelo código de saída.
+Os executáveis (tb_tia, tb_core...) não estão no .gitignore: compilar fora do repositório ou apagá-los.
 Player: `player/LEIAME.md` (v17 = 4074bd4c…, `test17.py` → "ALL OK v17").
 
 ## Shell e síntese
