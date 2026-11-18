@@ -41,7 +41,8 @@ Precisa do Xilinx ISE 14.7 (Linux) e de Python 3 (só para o passo 2).
    `git clone https://github.com/ludufre/sd2snes && git -C sd2snes checkout 1b5d9d79`
 2. Gere o projeto: `python3 fpga/make_atari_shell.py sd2snes --src fpga/`
    (cria `sd2snes/verilog/sd2snes_atari/`; a semente de placement já vem no
-   `.xise`: `PLACER_SEED = 13` no script, a do Passo 31).
+   `.xise`: `PLACER_SEED = 7` no script, a do bitstream publicado, Passo 36,
+   usado também na release do Passo 37).
 3. Compile o `utils/rle` do sd2snes (`make -C sd2snes/utils rle`); ele comprime o `main.bit`
    no formato que o firmware lê.
 4. Sintetize, dentro de `sd2snes/verilog/sd2snes_atari/`:
@@ -52,24 +53,33 @@ Precisa do Xilinx ISE 14.7 (Linux) e de Python 3 (só para o passo 2).
    ```
    O `make` para se o timing não fechar (`IGNORE_TIMING=1` ignora). Confira em
    `main.par`: "All constraints were met" e a folga de
-   `TS_snes_a26_clkin1` (96 MHz) positiva. No Passo 31: +0,013 ns.
+   `TS_snes_a26_clkin1` (96 MHz) positiva. No Passo 36 (semente 7): +0,001 ns.
 5. Copie `fpga_atari.bit` para `/sd2snes/fpga_atari.bit` no cartão.
 
 **A semente.** A folga a 96 MHz é pequena e depende do placement. A semente
 ("Starting Placer Cost Table" de map e par) é escolhida por varredura:
 `scripts/sweep_sementes.sh` roda dentro de `verilog/sd2snes_atari/`, testa as
-sementes de `SEEDS` (começa pela 13) e para na primeira que fecha com folga de
-pelo menos 0,010 ns. Se mudar qualquer fonte, a semente 13 pode deixar de
-fechar: rode a varredura de novo. No Passo 31 a 13 fechou; na varredura feita
-antes (mesma lógica, versão `$0A`), 11 (-0,207 ns) e 9 (-0,355 ns) não fecharam.
+sementes de `SEEDS` (lista padrão começando pela 13) e para na primeira que
+fecha com folga de pelo menos `MINSLACK` (padrão 0,010 ns). O bitstream
+publicado (Passo 36) fechou só na semente 7, com +0,001 ns (as sementes 17, 13,
+11 e 9 não fecharam); para refazê-lo, use
+`SEEDS=7 MINSLACK=0 ../../fpga/scripts/sweep_sementes.sh` (o `MINSLACK=0` é
+necessário: o padrão de 0,010 ns recusaria +0,001 ns). Se mudar qualquer fonte,
+a semente 7 pode deixar de fechar: rode a varredura de novo.
 
-**Reprodutibilidade.** Refeito a partir destes fontes, com o mesmo commit do
-sd2snes e a semente 13, o bitstream sai igual ao distribuído, menos os 5 bytes
-da hora da síntese no cabeçalho do `.bit` (o md5 do arquivo inteiro muda a
-cada build). Para comparar, ignore os 100 primeiros bytes:
-`tail -c +101 fpga_atari.bit | md5sum` deve dar
-`d713e40af635f207593e242efd80e580` (o do arquivo distribuído,
-`5bbcf7b2be8815e326de021119af63bf`, inclui a data e a hora de 2026-10-16).
+**Reprodutibilidade.** Refeito em 2026-11-18 a partir destes fontes, do commit
+`1b5d9d79` do sd2snes e da semente 7, o bitstream saiu com o mesmo tamanho
+(129.888 bytes), os mesmos números (5.455 LUTs, 3.141 slices, 16/16 BRAM,
++0,001 ns, "All constraints were met") e o mesmo conteúdo do distribuído; só a
+data e a hora da síntese, no cabeçalho de texto do `.bit`, mudam, então o md5
+do arquivo inteiro muda a cada build (o distribuído,
+`d33d69b587c485e9435126053061b8a9`, tem a data de 2026-10-23). Para comparar,
+tire o md5 a partir da palavra de sincronismo `AA 99 55 66` (offset 103 no
+arquivo distribuído): deve dar `606d9ff61050865b6de12031c0cbc3ee`.
+
+```
+python3 -c "import sys,hashlib; b=open(sys.argv[1],'rb').read(); i=b.find(bytes.fromhex('AA995566')); print(i, hashlib.md5(b[i:]).hexdigest())" fpga_atari.bit
+```
 
 ## Testbenches
 

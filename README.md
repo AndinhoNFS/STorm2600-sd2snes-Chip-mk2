@@ -295,7 +295,7 @@ Cada pasta tem um LEIAME próprio (`tools/README.txt` no caso das ferramentas).
 - O player (`sdcard/sd2snes/atari_snes.bin`) é montado a partir de `player/`,
   escrito do zero; o binário reproduz byte a byte (ver `player/LEIAME.md`).
 - O bitstream é gerado a partir de `fpga/` e do sd2snes no commit `1b5d9d79`;
-  o passo a passo (ISE 14.7, `make`, `utils/rle`, semente 13) está em
+  o passo a passo (ISE 14.7, `make`, `utils/rle`, semente 7) está em
   [`fpga/LEIAME.md`](fpga/LEIAME.md).
 - Fonte correspondente (GPL): a do `firmware.img` é a tag `v1.11.2-br-v2.18.1` de
   [ludufre/sd2snes](https://github.com/ludufre/sd2snes) mais a pasta

@@ -58,6 +58,15 @@ a byte, menos os 4 bytes de versão do cabeçalho (bytes 4 a 7). Esses bytes sã
 um hash da hora do build, então o md5 de um build novo nunca bate com o de
 `sdcard/MD5SUMS`.
 
+Referência do Passo 37 (conferida em 2026-11-18, recompilando a tag
+`v1.11.2-br-v2.18.1` com este patch e o arm-none-eabi-gcc 13.2.1 do Ubuntu 24.04,
+pacote `15:13.2.rel1-2`): com os bytes 4 a 7 zerados, o `firmware.img` publicado
+e o recompilado dão o mesmo md5, `5f8a92cd97f7d02ec38e14275c0fec3b` (122.807 bytes):
+
+```
+python3 -c "import sys,hashlib; b=open(sys.argv[1],'rb').read(); print(hashlib.md5(b[:4]+bytes(4)+b[8:]).hexdigest())" firmware.img
+```
+
 ## Detecção do mapper FE (Passo 25)
 
 O critério: cinco assinaturas de código e a regra do ramo de 8 KB. Um `.a26` de 8192 bytes vira mapper 5 (FE)
